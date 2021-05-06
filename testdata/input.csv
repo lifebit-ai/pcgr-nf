@@ -1,0 +1,2 @@
+sample_name,sample_path
+parabricks_test_sample,'s3://lifebit-featured-datasets/pipelines/parabricks/germline/output/HG001-NA12878-pFDA_S1_L001_20k.vcf'
