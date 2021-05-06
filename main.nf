@@ -7,7 +7,8 @@ def helpMessage() {
     nextflow run main.nf --input sample.csv [Options]
     
     Inputs Options:
-    --input         Input file
+    --input         Input VCF file
+    --name          Sample name
 
     PCGR Options:
     --pcgr_config   Tool config file (path)
@@ -38,32 +39,44 @@ if (params.help) {
 Channel
     .fromPath(params.input)
     .ifEmpty { exit 1, "Cannot find input file : ${params.input}" }
-    .splitCsv(skip:1)
-    .map {sample_name, file_path -> [ sample_name, file_path ] }
     .set { ch_input }
+
+Channel
+    .from(params.name)
+    .ifEmpty { exit 1, "Cannot find input name : ${params.name}" }
+    .set { sample_name }
+
+Channel.fromPath(params.pcgr_data)
+    .ifEmpty { exit 1, "Cannot find data bundle path : ${params.pcgr_data}" }
+    .set{ data_bundle }
+
+Channel.fromPath(params.pcgr_config)
+    .ifEmpty { exit 1, "Cannot find config file : ${params.pcgr_config}" }
+    .set{ config }
 
 // Define Process
 process pcgr {
-    tag "$sample_name"
+    tag "$name"
     label 'low_memory'
     publishDir "${params.outdir}", mode: 'copy'
     publishDir "${params.outdir}/MultiQC", mode: 'copy', pattern: "multiqc_report.html"
 
     input:
-    set val(sample_name), file(input_file) from ch_input
+    file input_file from ch_input
+    path data from data_bundle
+    val name from sample_name
+    path config_file from config
 
     output:
     file "multiqc_report.html"
     file "result/*"
     script:
     """
-    # Get reference data
-    wget ${params.pcgr_data}
-    unzip *.zip 
+    echo pcgr.py --input_vcf $input_file --pcgr_dir $data --output_dir result/ --genome_assembly $params.pcgr_genome --conf $config_file --sample_id $name --no_vcf_validate --no-docker
 
     mkdir result
-    pcgr.py --input_vcf $input_file --pcgr_dir . --output_dir result/ --genome_assembly ${params.pcgr_genome} --conf ${params.pcgr_config} --sample_id $sample_name --no_vcf_validate --no-docker
+    pcgr.py --input_vcf $input_file --pcgr_dir $data --output_dir result/ --genome_assembly $params.pcgr_genome --conf $config_file --sample_id $name --no_vcf_validate --no-docker
 
-    cp result/*${params.pcgr_genome}.html multiqc_report.html"
+    cp result/*${params.pcgr_genome}.html multiqc_report.html
     """
   }
