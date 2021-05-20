@@ -70,6 +70,10 @@ Channel.fromPath(params.pcgr_config)
     .ifEmpty { exit 1, "Cannot find config file : ${params.pcgr_config}" }
     .set{ config }
 
+// Custum scripts
+projectDir = workflow.projectDir
+custum_pcgr = Channel.fromPath("${projectDir}/bin/modified_pcgr.py",  type: 'file', followLinks: false)
+
 // Define Processes
 
 process sanitise_vcf {
@@ -110,27 +114,39 @@ ch_variant_query_sets_flat = ch_variant_query_sets.flatten()
 process pcgr {
     tag "$input_file"
     label 'low_memory'
-    errorStrategy 'ignore'
-    publishDir "${params.outdir}", mode: 'copy'
-    publishDir "${params.outdir}/MultiQC", mode: 'copy', pattern: "multiqc_report.html"
+    publishDir "${params.outdir}/pcgr/${input_file.baseName}", mode: 'copy'
 
     input:
     file input_file from ch_variant_query_sets_flat
     each path(data) from data_bundle
-    each sample_name
     each file(config_file) from config
+    each file("modified_pcgr.py") from custum_pcgr
 
     output:
-    file "multiqc_report.html"
-    file "result/*"
+    file "result/*" into out_pcgr
+    file("config_options.json") into pcgr_config_option
+    file("arg_dict.json") into pcgr_arg_dict
 
     script:
     """
     mkdir result
-    echo pcgr.py --input_vcf $input_file --pcgr_dir $data --output_dir result/ --genome_assembly $params.pcgr_genome --conf $config_file --sample_id $sample_name --no_vcf_validate --no-docker
+    echo modified_pcgr.py --input_vcf $input_file --pcgr_dir $data --output_dir result/ --genome_assembly $params.pcgr_genome --conf $config_file --sample_id ${input_file.baseName} --no_vcf_validate --no-docker
     
-    pcgr.py --input_vcf $input_file --pcgr_dir $data --output_dir result/ --genome_assembly $params.pcgr_genome --conf $config_file --sample_id $sample_name --no_vcf_validate --no-docker
+    python modified_pcgr.py --input_vcf $input_file --pcgr_dir $data --output_dir result/ --genome_assembly $params.pcgr_genome --conf $config_file --sample_id ${input_file.baseName} --no_vcf_validate --no-docker
+    rm -r result/pcgr_rmarkdown result/pcgr_rmarkdown
+    """
+}
 
-    cp result/*${params.pcgr_genome}.html multiqc_report.html
+process combine_pcgr {
+
+    publishDir "${params.outdir}/pcgr/combine", mode: 'copy'
+
+    input:
+    file output_files from out_pcgr.collect()
+    file config_option from pcgr_config_option
+    file arg_dict from pcgr_arg_dict
+
+    script:
+    """
     """
 }
