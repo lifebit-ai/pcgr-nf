@@ -71,7 +71,8 @@ Channel.fromPath(params.pcgr_config)
     .set{ config }
 
 // Define Processes
-process split_vcf_by_chr {
+
+process sanitise_vcf {
 
     label 'low_memory'
     publishDir "${params.outdir}", mode: 'copy'
@@ -80,10 +81,27 @@ process split_vcf_by_chr {
     file(input_file) from ch_input
 
     output:
-    file("*.vcf") into ch_variant_query_sets
+    file("fixed.vcf") into in_split_vcf
+
+    """
+    bcftools +fixploidy $input_file > fixed.vcf
+    """
+}
+
+process split_vcf_by_chr {
+
+    label 'low_memory'
+    publishDir "${params.outdir}", mode: 'copy'
+
+    input:
+    file(input_file) from in_split_vcf
+
+    output:
+    file("*.recode.vcf") into ch_variant_query_sets
 
     """
     seq  -f "chr%1g" 22 | xargs -n1 -P4 -I {} vcftools --gzvcf ${input_file} --chr {} --recode --recode-INFO-all --out ${input_file.baseName}.{}.vcf
+    for file in \$(ls *.recode.vcf); do res=\$(cat \$file |grep -v ^# | wc -l); echo \$res; if (( \$res == 0)); then echo \$file; rm \$file;  fi; done
     """
 }
 
@@ -115,4 +133,4 @@ process pcgr {
 
     cp result/*${params.pcgr_genome}.html multiqc_report.html
     """
-  }
+}
