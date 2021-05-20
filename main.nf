@@ -31,9 +31,25 @@ def helpMessage() {
 
 // Show help message
 if (params.help) {
-  helpMessage()
-  exit 0
+    helpMessage()
+    exit 0
 }
+
+// Header log info
+def summary = [:]
+if (workflow.revision) summary['Pipeline Release'] = workflow.revision
+summary['Max Resources']    = "$params.max_memory memory, $params.max_cpus cpus, $params.max_time time per job"
+if (workflow.containerEngine) summary['Container'] = "$workflow.containerEngine - $workflow.container"
+summary['Output dir']       = params.outdir
+summary['Launch dir']       = workflow.launchDir
+summary['Working dir']      = workflow.workDir
+summary['Script dir']       = workflow.projectDir
+summary['User']             = workflow.userName
+summary['Config Profile']   = workflow.profile
+summary['Input file']       = params.input
+log.info summary.collect { k,v -> "${k.padRight(20)}: $v" }.join("\n")
+log.info "-\033[2m--------------------------------------------------\033[0m-"
+
 
 // Define Channels from input
 Channel
@@ -54,15 +70,33 @@ Channel.fromPath(params.pcgr_config)
     .ifEmpty { exit 1, "Cannot find config file : ${params.pcgr_config}" }
     .set{ config }
 
-// Define Process
+// Define Processes
+process split_vcf_by_chr {
+
+    label 'low_memory'
+    publishDir "${params.outdir}", mode: 'copy'
+
+    input:
+    file(input_file) from ch_input
+
+    output:
+    file("*.vcf") into ch_variant_query_sets
+
+    """
+    seq  -f "chr%1g" 22 | xargs -n1 -P4 -I {} vcftools --gzvcf ${input_file} --chr {} --recode --recode-INFO-all --out ${input_file.baseName}.{}.vcf
+    """
+}
+
+ch_variant_query_sets_flat = ch_variant_query_sets.flatten().view()
+
 process pcgr {
-    tag "$name"
+    tag "$input_file"
     label 'low_memory'
     publishDir "${params.outdir}", mode: 'copy'
     publishDir "${params.outdir}/MultiQC", mode: 'copy', pattern: "multiqc_report.html"
 
     input:
-    file input_file from ch_input
+    file input_file from ch_variant_query_sets_flat
     path data from data_bundle
     val name from sample_name
     path config_file from config
@@ -70,9 +104,12 @@ process pcgr {
     output:
     file "multiqc_report.html"
     file "result/*"
+
     script:
     """
     mkdir result
+    echo pcgr.py --input_vcf $input_file --pcgr_dir $data --output_dir result/ --genome_assembly $params.pcgr_genome --conf $config_file --sample_id $name --no_vcf_validate --no-docker
+    
     pcgr.py --input_vcf $input_file --pcgr_dir $data --output_dir result/ --genome_assembly $params.pcgr_genome --conf $config_file --sample_id $name --no_vcf_validate --no-docker
 
     cp result/*${params.pcgr_genome}.html multiqc_report.html
