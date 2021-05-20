@@ -72,8 +72,6 @@ process pcgr {
     file "result/*"
     script:
     """
-    echo pcgr.py --input_vcf $input_file --pcgr_dir $data --output_dir result/ --genome_assembly $params.pcgr_genome --conf $config_file --sample_id $name --no_vcf_validate --no-docker
-
     mkdir result
     pcgr.py --input_vcf $input_file --pcgr_dir $data --output_dir result/ --genome_assembly $params.pcgr_genome --conf $config_file --sample_id $name --no_vcf_validate --no-docker
 
