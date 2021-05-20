@@ -124,8 +124,8 @@ process pcgr {
 
     output:
     file "result/*" into out_pcgr
-    file("config_options.json") into pcgr_config_option
-    file("arg_dict.json") into pcgr_arg_dict
+    file("*config_options.json") into pcgr_config_option
+    file("*arg_dict.json") into pcgr_arg_dict
 
     script:
     """
@@ -133,18 +133,23 @@ process pcgr {
     echo modified_pcgr.py --input_vcf $input_file --pcgr_dir $data --output_dir result/ --genome_assembly $params.pcgr_genome --conf $config_file --sample_id ${input_file.baseName} --no_vcf_validate --no-docker
     
     python modified_pcgr.py --input_vcf $input_file --pcgr_dir $data --output_dir result/ --genome_assembly $params.pcgr_genome --conf $config_file --sample_id ${input_file.baseName} --no_vcf_validate --no-docker
-    rm -r result/pcgr_rmarkdown result/pcgr_rmarkdown
+    mv arg_dict.json ${input_file.baseName}_arg_dict.json
+    mv config_options.json ${input_file.baseName}_config_options.json
+    rm -r result/pcgr_rmarkdown result/pcgr_flexdb
     """
 }
 
 process combine_pcgr {
 
+    //param for tier filtering? (up to) all, 1, 2, 3, 4, noncoding
+
     publishDir "${params.outdir}/pcgr/combine", mode: 'copy'
 
     input:
+    val name from sample_name
     file output_files from out_pcgr.collect()
-    file config_option from pcgr_config_option
-    file arg_dict from pcgr_arg_dict
+    file config_option from pcgr_config_option.collect()
+    file arg_dict from pcgr_arg_dict.collect()
 
     script:
     """
