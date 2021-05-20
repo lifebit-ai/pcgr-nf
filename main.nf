@@ -87,19 +87,20 @@ process split_vcf_by_chr {
     """
 }
 
-ch_variant_query_sets_flat = ch_variant_query_sets.flatten().view()
+ch_variant_query_sets_flat = ch_variant_query_sets.flatten()
 
 process pcgr {
     tag "$input_file"
     label 'low_memory'
+    errorStrategy 'ignore'
     publishDir "${params.outdir}", mode: 'copy'
     publishDir "${params.outdir}/MultiQC", mode: 'copy', pattern: "multiqc_report.html"
 
     input:
     file input_file from ch_variant_query_sets_flat
-    path data from data_bundle
-    val name from sample_name
-    path config_file from config
+    each path(data) from data_bundle
+    each sample_name
+    each file(config_file) from config
 
     output:
     file "multiqc_report.html"
@@ -108,9 +109,9 @@ process pcgr {
     script:
     """
     mkdir result
-    echo pcgr.py --input_vcf $input_file --pcgr_dir $data --output_dir result/ --genome_assembly $params.pcgr_genome --conf $config_file --sample_id $name --no_vcf_validate --no-docker
+    echo pcgr.py --input_vcf $input_file --pcgr_dir $data --output_dir result/ --genome_assembly $params.pcgr_genome --conf $config_file --sample_id $sample_name --no_vcf_validate --no-docker
     
-    pcgr.py --input_vcf $input_file --pcgr_dir $data --output_dir result/ --genome_assembly $params.pcgr_genome --conf $config_file --sample_id $name --no_vcf_validate --no-docker
+    pcgr.py --input_vcf $input_file --pcgr_dir $data --output_dir result/ --genome_assembly $params.pcgr_genome --conf $config_file --sample_id $sample_name --no_vcf_validate --no-docker
 
     cp result/*${params.pcgr_genome}.html multiqc_report.html
     """
