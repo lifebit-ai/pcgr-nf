@@ -187,6 +187,6 @@ process report {
 
     script:
     """
-    python pcgr_run_report.py $name $config_file $data $params.pcgr_genome $result_tsv $config_option $arg_dict
+    python pcgr_run_report.py $name $config_file $data $params.pcgr_genome $result_tsv $config_option
     """
 }
