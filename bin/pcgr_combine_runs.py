@@ -64,10 +64,13 @@ def main():
         for pass_tsv_file in pass_tsv_files:
             skipHeader = pass_tsv_files.index(pass_tsv_file) != 0
             with gzip.open(pass_tsv_file, 'rt') as f:
-                header = f.readline()
-                header = header.strip().split('\t')
+                header_comment = f.readline()
+                header_comment = header_comment.strip().split('\t')
+                header_names = f.readline()
+                header_names = header_names.strip().split('\t')
                 if not skipHeader:
-                    tsv_writer.writerow(header)
+                    tsv_writer.writerow(header_comment)
+                    tsv_writer.writerow(header_names)
                 for line in f:
                     row = line.strip().split('\t')
                     print(row)
