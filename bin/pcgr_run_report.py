@@ -20,7 +20,6 @@ def main():
         genome_assembly = sys.argv[4]
         output_pass_tsv = sys.argv[5]
         config_option_file = sys.argv[6]
-        arg_dict = sys.argv[7]
     except IndexError as e:
         print(e, "files not found")
         sys.exit(1)
