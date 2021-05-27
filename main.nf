@@ -73,6 +73,7 @@ Channel.fromPath(params.pcgr_config)
 // Custum scripts
 projectDir = workflow.projectDir
 custum_pcgr = Channel.fromPath("${projectDir}/bin/modified_pcgr.py",  type: 'file', followLinks: false)
+combine_runs = Channel.fromPath("${projectDir}/bin/pcgr_combine_runs.py",  type: 'file', followLinks: false)
 
 // Define Processes
 
@@ -139,6 +140,16 @@ process pcgr {
     """
 }
 
+// check filtering parameters... in a hacky way
+def filter_mode_expected = ['all', '1', '2', '3', '4'] as Set
+def parameter_diff = filter_mode_expected - params.filter
+    if (parameter_diff.size() > 4){
+        println "[Pipeline warning] Parameter $params.filter is not valid in the pipeline! Running with default 'all'\n"
+        IN_filter_mode = Channel.value('all')
+    } else {
+        IN_filter_mode = Channel.value(params.filter)
+    }
+
 process combine_pcgr {
 
     //param for tier filtering? (up to) all, 1, 2, 3, 4, noncoding
@@ -146,12 +157,34 @@ process combine_pcgr {
     publishDir "${params.outdir}/pcgr/combine", mode: 'copy'
 
     input:
-    val name from sample_name
+    val filter_value from IN_filter_mode
     file output_files from out_pcgr.collect()
-    file config_option from pcgr_config_option.collect()
-    file arg_dict from pcgr_arg_dict.collect()
+    each file("pcgr_combine_runs.py") from combine_runs
 
     script:
     """
+    python pcgr_combine_runs.py $filter_value $output_files
     """
 }
+
+/*
+process report {
+
+    publishDir "${params.outdir}/MultiQC", mode: 'copy', pattern: "multiqc_report.html"
+    publishDir "${params.outdir}/pcgr/report", mode: 'copy'
+
+    input:
+    val name from sample_name
+    file config_option from pcgr_config_option.collect()
+    file arg_dict from pcgr_arg_dict.collect()
+
+    output:
+    file "multiqc_report.html"
+    file "result/*"
+
+    script:
+    """
+    cp result/*${params.pcgr_genome}.html multiqc_report.html
+    """
+}
+*/
