@@ -75,7 +75,7 @@ def main():
                     row = line.strip().split('\t')
                     print(row)
                     variant_id = row[0]+'_'+row[1]
-                    if variant_id in allowed_variants and len(row) == 189:
+                    if variant_id in allowed_variants and len(row) == 189:  # TODO
                         tsv_writer.writerow(row)
 
 if __name__ == '__main__':
