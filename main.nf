@@ -64,17 +64,17 @@ Channel
 
 Channel.fromPath(params.pcgr_data)
     .ifEmpty { exit 1, "Cannot find data bundle path : ${params.pcgr_data}" }
-    .set{ data_bundle }
+    .into{ data_bundle ;  data_bundle_2}
 
 Channel.fromPath(params.pcgr_config)
     .ifEmpty { exit 1, "Cannot find config file : ${params.pcgr_config}" }
-    .set{ config }
+    .into{ config ; config_2 }
 
 // Custum scripts
 projectDir = workflow.projectDir
 custum_pcgr = Channel.fromPath("${projectDir}/bin/modified_pcgr.py",  type: 'file', followLinks: false)
 combine_runs = Channel.fromPath("${projectDir}/bin/pcgr_combine_runs.py",  type: 'file', followLinks: false)
-
+run_report = Channel.fromPath("${projectDir}/bin/pcgr_run_report.py",  type: 'file', followLinks: false)
 // Define Processes
 
 process sanitise_vcf {
@@ -161,30 +161,34 @@ process combine_pcgr {
     file output_files from out_pcgr.collect()
     each file("pcgr_combine_runs.py") from combine_runs
 
+    output:
+    file("combined.filtered.snvs_indels.tiers.tsv")
+    file("combined.filtered.pass.tsv") into tsv_combined_filtered
+
     script:
     """
     python pcgr_combine_runs.py $filter_value $output_files
     """
 }
 
-/*
 process report {
 
     publishDir "${params.outdir}/MultiQC", mode: 'copy', pattern: "multiqc_report.html"
-    publishDir "${params.outdir}/pcgr/report", mode: 'copy'
 
     input:
     val name from sample_name
-    file config_option from pcgr_config_option.collect()
-    file arg_dict from pcgr_arg_dict.collect()
+    file(config_file) from config_2
+    path(data) from data_bundle_2
+    file(result_tsv) from tsv_combined_filtered
+    each file("pcgr_run_report.py") from run_report
+    file config_option from pcgr_config_option
+    file arg_dict from pcgr_arg_dict
 
     output:
     file "multiqc_report.html"
-    file "result/*"
 
     script:
     """
-    cp result/*${params.pcgr_genome}.html multiqc_report.html
+    python pcgr_run_report.py $name $config_file $data $params.pcgr_genome $result_tsv $config_option $arg_dict
     """
 }
-*/

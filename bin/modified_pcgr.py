@@ -940,6 +940,7 @@ def run_pcgr(arg_dict, host_directories, config_options):
                            str(config_options['allelic_support']['control_af_max']) + " " + str(config_options['allelic_support']['control_dp_min']) + " " + \
                            str(cell_line) + " " + str(include_trials) + " " + str(ttype) + docker_cmd_run_end)
       check_subprocess(logger, pcgr_report_command)
+      print(pcgr_report_command)
       logger.info("Finished")
 
    print()
