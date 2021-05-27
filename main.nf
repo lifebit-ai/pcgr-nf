@@ -126,7 +126,6 @@ process pcgr {
     output:
     file "result/*" into out_pcgr
     file("*config_options.json") into pcgr_config_option
-    file("*arg_dict.json") into pcgr_arg_dict
 
     script:
     """
@@ -182,7 +181,6 @@ process report {
     file(result_tsv) from tsv_combined_filtered
     each file("pcgr_run_report.py") from run_report
     file config_option from pcgr_config_option
-    file arg_dict from pcgr_arg_dict
 
     output:
     file "multiqc_report.html"
