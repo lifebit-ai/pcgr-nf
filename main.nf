@@ -57,7 +57,7 @@ Channel.fromPath(params.pcgr_config)
 // Define Process
 process pcgr {
     tag "$name"
-    label 'low_memory'
+    label 'process_high'
     publishDir "${params.outdir}", mode: 'copy'
     publishDir "${params.outdir}/MultiQC", mode: 'copy', pattern: "multiqc_report.html"
 
