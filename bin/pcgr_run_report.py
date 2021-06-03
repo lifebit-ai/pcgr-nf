@@ -31,7 +31,7 @@ def main():
     tumor_only = 0
     cell_line = 0
     include_trials = 0
-    output_dir = 'result/'
+    output_dir = os.path.join(os.getcwd(),'result/')
 
     # load config dict
     with open(config_option_file) as json_file:
@@ -39,7 +39,7 @@ def main():
     
     ttype = config_options['tumor_type']['type'].replace(" ","_").replace("/","@")
 
-    pcgr_report_command = ['pcgr.R', 
+    pcgr_report_command = ['/pcgr-0.9.1/src/pcgr.R', 
                             output_dir, 
                             output_pass_tsv,
                             str(input_cna_docker),
