@@ -96,7 +96,11 @@ process sanitise_vcf {
 
 process split_vcf_by_chr {
 
-    label 'low_memory'
+// Define Process
+process pcgr {
+    tag "$name"
+    label 'process_high'
+    
     publishDir "${params.outdir}", mode: 'copy'
 
     input:
