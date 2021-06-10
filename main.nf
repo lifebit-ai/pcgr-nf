@@ -75,8 +75,25 @@ projectDir = workflow.projectDir
 custum_pcgr = Channel.fromPath("${projectDir}/bin/modified_pcgr.py",  type: 'file', followLinks: false)
 combine_runs = Channel.fromPath("${projectDir}/bin/pcgr_combine_runs.py",  type: 'file', followLinks: false)
 run_report = Channel.fromPath("${projectDir}/bin/pcgr_report.py",  type: 'file', followLinks: false)
-modified_pcgrr = Channel.fromPath("${projectDir}/bin/pcgr.R",  type: 'file', followLinks: false)
+
+
 // Define Processes
+process vcffilter {
+    tag "$input_file"
+    label 'process_low'
+
+    input:
+    file input_file from ch_input
+
+    output:
+    file "filtered.vcf" into out_vcffilter
+
+    script:
+    """
+    vcffilter -s -f "QD > ${params.min_qd} | FS < ${params.max_fs} | SOR < ${params.max_sor} | MQ > ${params.min_mq}" $input_file > filtered.vcf
+    """
+}
+
 
 process sanitise_vcf {
 
@@ -84,7 +101,7 @@ process sanitise_vcf {
     publishDir "${params.outdir}", mode: 'copy'
 
     input:
-    file(input_file) from ch_input
+    file(input_file) from out_vcffilter
 
     output:
     file("fixed.vcf") into in_split_vcf
@@ -96,9 +113,7 @@ process sanitise_vcf {
 
 process split_vcf_by_chr {
 
-// Define Process
-process pcgr {
-    label 'process_high'
+    label 'low_memory'
     
     publishDir "${params.outdir}", mode: 'copy'
 
@@ -130,8 +145,9 @@ process pcgr {
     output:
     file "result/*" into out_pcgr
     file("*config_options.json") into pcgr_config_option
+    file("*arg_dict.json") into pcgr_arg_dict
     file("*host_directories.json") into pcgr_host_directories
-
+    
     script:
     """
     mkdir result
@@ -140,9 +156,7 @@ process pcgr {
     python modified_pcgr.py --input_vcf $input_file --pcgr_dir $data --output_dir result/ --genome_assembly $params.pcgr_genome --conf $config_file --sample_id ${input_file.baseName} --no_vcf_validate --no-docker
     mv arg_dict.json ${input_file.baseName}_arg_dict.json
     mv config_options.json ${input_file.baseName}_config_options.json
-    mv host_directories.json ${input_file.baseName}_host_directories.json
-
-    rm -r result/pcgr_flexdb result/pcgr_rmarkdown/
+    rm -r result/pcgr_rmarkdown result/pcgr_flexdb
     """
 }
 
