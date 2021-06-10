@@ -98,7 +98,6 @@ process split_vcf_by_chr {
 
 // Define Process
 process pcgr {
-    tag "$name"
     label 'process_high'
     
     publishDir "${params.outdir}", mode: 'copy'
@@ -190,6 +189,8 @@ process compress_tsv {
 }
 
 process report {
+    tag "$name"
+    label 'low_memory'
 
     publishDir "${params.outdir}/MultiQC", mode: 'copy', pattern: "multiqc_report.html"
 
