@@ -59,7 +59,7 @@ def main():
 
     # filter output_pass_tsv
     pass_tsv_files = [x for x in output_files if x.endswith('pass.tsv.gz')]
-    with open("combined.filtered.pass.tsv", "w") as fh:
+    with open("combined.recode.pcgr_acmg.grch38.pass.tsv", "w") as fh:
         tsv_writer = csv.writer(fh, delimiter="\t")
         for pass_tsv_file in pass_tsv_files:
             skipHeader = pass_tsv_files.index(pass_tsv_file) != 0

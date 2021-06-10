@@ -597,6 +597,8 @@ def verify_input_files(arg_dict, logger):
    host_directories['input_cna_plot_basename_host'] = input_cna_plot_basename
    host_directories['input_conf_basename_host'] = input_conf_basename
 
+   with open("host_directories.json", "w") as json_report:
+      json_report.write(json.dumps(host_directories, separators=(",", ":")))
    
    return host_directories
    
@@ -922,6 +924,7 @@ def run_pcgr(arg_dict, host_directories, config_options):
    print()
 
    ## Generation of HTML reports for VEP/vcfanno-annotated VCF and copy number segment file
+
    if not arg_dict['basic']:
       ttype = config_options['tumor_type']['type'].replace(" ","_").replace("/","@")
       logger = getlogger('pcgr-writer')
@@ -941,8 +944,8 @@ def run_pcgr(arg_dict, host_directories, config_options):
                            str(cell_line) + " " + str(include_trials) + " " + str(ttype) + docker_cmd_run_end)
       check_subprocess(logger, pcgr_report_command)
       print(pcgr_report_command)
+      print(output_pass_tsv)
       logger.info("Finished")
-
    print()
 
 

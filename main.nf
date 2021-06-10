@@ -74,7 +74,8 @@ Channel.fromPath(params.pcgr_config)
 projectDir = workflow.projectDir
 custum_pcgr = Channel.fromPath("${projectDir}/bin/modified_pcgr.py",  type: 'file', followLinks: false)
 combine_runs = Channel.fromPath("${projectDir}/bin/pcgr_combine_runs.py",  type: 'file', followLinks: false)
-run_report = Channel.fromPath("${projectDir}/bin/pcgr_run_report.py",  type: 'file', followLinks: false)
+run_report = Channel.fromPath("${projectDir}/bin/pcgr_report.py",  type: 'file', followLinks: false)
+modified_pcgrr = Channel.fromPath("${projectDir}/bin/pcgr.R",  type: 'file', followLinks: false)
 // Define Processes
 
 process sanitise_vcf {
@@ -126,6 +127,7 @@ process pcgr {
     output:
     file "result/*" into out_pcgr
     file("*config_options.json") into pcgr_config_option
+    file("*host_directories.json") into pcgr_host_directories
 
     script:
     """
@@ -135,7 +137,9 @@ process pcgr {
     python modified_pcgr.py --input_vcf $input_file --pcgr_dir $data --output_dir result/ --genome_assembly $params.pcgr_genome --conf $config_file --sample_id ${input_file.baseName} --no_vcf_validate --no-docker
     mv arg_dict.json ${input_file.baseName}_arg_dict.json
     mv config_options.json ${input_file.baseName}_config_options.json
-    rm -r result/pcgr_rmarkdown result/pcgr_flexdb
+    mv host_directories.json ${input_file.baseName}_host_directories.json
+
+    rm -r result/pcgr_flexdb result/pcgr_rmarkdown/
     """
 }
 
@@ -151,8 +155,6 @@ def parameter_diff = filter_mode_expected - params.filter
 
 process combine_pcgr {
 
-    //param for tier filtering? (up to) all, 1, 2, 3, 4, noncoding
-
     publishDir "${params.outdir}/pcgr/combine", mode: 'copy'
 
     input:
@@ -162,11 +164,24 @@ process combine_pcgr {
 
     output:
     file("combined.filtered.snvs_indels.tiers.tsv")
-    file("combined.filtered.pass.tsv") into tsv_combined_filtered
+    file("combined.recode.pcgr_acmg.grch38.pass.tsv") into tsv_combined_filtered
 
     script:
     """
     python pcgr_combine_runs.py $filter_value $output_files
+    """
+}
+
+process compress_tsv {
+    input:
+    file tsv from tsv_combined_filtered
+
+    output:
+    file("*gz") into compressed_tsv_combined_filtered
+
+    script:
+    """
+    gzip -f ${tsv}
     """
 }
 
@@ -178,15 +193,19 @@ process report {
     val name from sample_name
     file(config_file) from config_2
     path(data) from data_bundle_2
-    file(result_tsv) from tsv_combined_filtered
-    each file("pcgr_run_report.py") from run_report
+    file(result_tsv) from compressed_tsv_combined_filtered
+    each file("pcgr_report.py") from run_report
     file config_option from pcgr_config_option
+    file host_directories from pcgr_host_directories
 
     output:
     file "multiqc_report.html"
 
     script:
     """
-    python pcgr_run_report.py $name $config_file $data $params.pcgr_genome $result_tsv $config_option
+    mkdir result
+    python pcgr_report.py $name $config_file $data $params.pcgr_genome $result_tsv $config_option $host_directories \$PWD
+    
+    cp result/*${params.pcgr_genome}.html multiqc_report.html
     """
 }
