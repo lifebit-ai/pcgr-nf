@@ -77,9 +77,8 @@ process vcffilter {
 }
 
 process sanitise_vcf {
-
+    tag "$input_file"
     label 'low_memory'
-    publishDir "${params.outdir}", mode: 'copy'
 
     input:
     file(input_file) from out_vcffilter
@@ -93,7 +92,7 @@ process sanitise_vcf {
 }
 
 process split_vcf_by_chr {
-
+    tag "$input_file"
     label 'low_memory'
 
     input:
@@ -136,7 +135,7 @@ process pcgr {
     mv arg_dict.json ${input_file.baseName}_arg_dict.json
     mv config_options.json ${input_file.baseName}_config_options.json
     mv host_directories.json ${input_file.baseName}_host_directories.json
-    rm -r result/pcgr_rmarkdown result/pcgr_flexdb
+    #rm -r result/pcgr_rmarkdown result/pcgr_flexdb
     """
 }
 
@@ -151,7 +150,7 @@ def parameter_diff = filter_mode_expected - params.filter
     }
 
 process combine_pcgr {
-
+    label 'low_memory'
     publishDir "${params.outdir}/pcgr/combine", mode: 'copy'
 
     input:
@@ -170,6 +169,7 @@ process combine_pcgr {
 }
 
 process compress_tsv {
+    label 'low_memory'
     input:
     file tsv from tsv_combined_filtered
 
