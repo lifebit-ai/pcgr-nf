@@ -64,7 +64,15 @@ if (params.csv){
         .set { ch_input }
 }
 
-// check for valid reference options 
+Channel.fromPath(params.pcgr_data)
+    .ifEmpty { exit 1, "Cannot find data bundle path : ${params.pcgr_data}" }
+    .set{ data_bundle }
+
+Channel.fromPath(params.pcgr_config)
+    .ifEmpty { exit 1, "Cannot find config file : ${params.pcgr_config}" }
+    .set{ config }
+
+// Check for valid reference options 
 def human_reference_expected = ['grch37', 'grch38'] as Set
 def parameter_diff = human_reference_expected - params.pcgr_genome
 if (parameter_diff.size() > 1){
@@ -74,13 +82,10 @@ if (parameter_diff.size() > 1){
         ch_reference = Channel.value(params.pcgr_genome)
     }
 
-Channel.fromPath(params.pcgr_data)
-    .ifEmpty { exit 1, "Cannot find data bundle path : ${params.pcgr_data}" }
-    .set{ data_bundle }
-
-Channel.fromPath(params.pcgr_config)
-    .ifEmpty { exit 1, "Cannot find config file : ${params.pcgr_config}" }
-    .set{ config }
+// Custum scripts
+projectDir = workflow.projectDir
+run_report = Channel.fromPath("${projectDir}/bin/report.py",  type: 'file', followLinks: false)
+pcgr_toml_config = params.pcgr_config ? Channel.value(file(params.pcgr_config)) : Channel.fromPath("${projectDir}/bin/pcgr.toml", type: 'file', followLinks: false) 
 
 process vcffilter {
     tag "$input_file"
@@ -90,34 +95,90 @@ process vcffilter {
     file input_file from ch_input
 
     output:
-    file "filtered.vcf" into out_vcf_filter
+    file "*filtered.vcf" into out_vcf_filter
 
     script:
     """
-    vcffilter -s -f "QD > ${params.min_qd} | FS < ${params.max_fs} | SOR < ${params.max_sor} | MQ > ${params.min_mq}" $input_file > filtered.vcf
+    vcffilter -s -f "QD > ${params.min_qd} | FS < ${params.max_fs} | SOR < ${params.max_sor} | MQ > ${params.min_mq}" $input_file > ${input_file.baseName}_filtered.vcf
     """
 }
 
 process pcgr {
     tag "$input_file"
-    label 'process_high'
+    label 'process_low'
     publishDir "${params.outdir}", mode: 'copy'
-    publishDir "${params.outdir}/MultiQC", mode: 'copy', pattern: "multiqc_report.html"
 
     input:
     file input_file from out_vcf_filter
     path data from data_bundle
-    path config_file from config
+    file(config_toml) from pcgr_toml_config
     val reference from ch_reference
 
     output:
-    file "multiqc_report.html"
+    file "*_pcgr.html" into out_pcgr
     file "result/*"
     script:
     """
+    # Modify config_toml pass the params
+    cp ${config_toml} new_config.toml
+
+    # Swap placeholders with user provided values
+    sed -i "s/maf_onekg_eur_placeholder/${params.maf_onekg_eur}/g" new_config.toml
+    sed -i "s/maf_onekg_amr_placeholder/${params.maf_onekg_amr}/g" new_config.toml
+    sed -i "s/maf_onekg_afr_placeholder/${params.maf_onekg_afr}/g" new_config.toml
+    sed -i "s/maf_onekg_sas_placeholder/${params.maf_onekg_sas}/g" new_config.toml
+    sed -i "s/maf_onekg_eas_placeholder/${params.maf_onekg_eas}/g" new_config.toml
+    sed -i "s/maf_onekg_global_placeholder/${params.maf_onekg_global}/g" new_config.toml
+    sed -i "s/maf_gnomad_nfe_placeholder/${params.maf_gnomad_nfe}/g" new_config.toml
+    sed -i "s/maf_gnomad_amr_placeholder/${params.maf_gnomad_amr}/g" new_config.toml
+    sed -i "s/maf_gnomad_afr_placeholder/${params.maf_gnomad_afr}/g" new_config.toml
+    sed -i "s/maf_gnomad_asj_placeholder/${params.maf_gnomad_ajs}/g" new_config.toml
+    sed -i "s/maf_gnomad_sas_placeholder/${params.maf_gnomad_sas}/g" new_config.toml
+    sed -i "s/maf_gnomad_eas_placeholder/${params.maf_gnomad_eas}/g" new_config.toml
+    sed -i "s/maf_gnomad_fin_placeholder/${params.maf_gnomad_fin}/g" new_config.toml
+    sed -i "s/maf_gnomad_oth_placeholder/${params.maf_gnomad_oth}/g" new_config.toml
+    sed -i "s/maf_gnomad_global_placeholder/${params.maf_gnomad_global}/g" new_config.toml
+    sed -i "s/exclude_pon_placeholder/${params.exclude_pon}/g" new_config.toml
+    sed -i "s/exclude_likely_hom_germline_placeholder/${params.exclude_likely_hom_germline}/g" new_config.toml
+    sed -i "s/exclude_likely_het_germline_placeholder/${params.exclude_likely_het_germline}/g" new_config.toml
+    sed -i "s/exclude_dbsnp_nonsomatic_placeholder/${params.exclude_dbsnp_nonsomatic}/g" new_config.toml
+    sed -i "s/exclude_nonexonic_placeholder/${params.exclude_nonexonic}/g" new_config.toml
+    sed -i "s/tumor_dp_tag_placeholder/${params.tumor_dp_tag}/g" new_config.toml
+    sed -i "s/tumor_af_tag_placeholder/${params.tumor_af_tag}/g" new_config.toml
+    sed -i "s/control_dp_tag_placeholder/${params.control_dp_tag}/g" new_config.toml
+    sed -i "s/control_af_tag_placeholder/${params.control_af_tag}/g" new_config.toml
+    sed -i "s/call_conf_tag_placeholder/${params.call_conf_tag}/g" new_config.toml
+    sed -i "s/report_theme_placeholder/${params.report_theme}/g" new_config.toml
+    sed -i "s/custom_tags_placeholder/${params.custom_tags}/g" new_config.toml
+    sed -i "s/list_noncoding_placeholder/${params.list_noncoding}/g" new_config.toml
+    sed -i "s/n_vcfanno_proc_placeholder/${params.n_vcfanno_proc}/g" new_config.toml
+    sed -i "s/n_vep_forks_placeholder/${params.n_vep_forks}/g" new_config.toml
+    sed -i "s/vep_pick_order_placeholder/${params.vep_pick_order}/g" new_config.toml
+    sed -i "s/vep_skip_intergenic_placeholder/${params.vep_skip_intergenic}/g" new_config.toml
+    sed -i "s/vcf2maf_placeholder/${params.vcf2maf}/g" new_config.toml
+
+    # Run PCGR
     mkdir result
     pcgr.py --input_vcf $input_file --pcgr_dir $data --output_dir result/ --genome_assembly $reference --conf $config_file --sample_id $input_file.baseName --no_vcf_validate --no-docker
 
-    cp result/*${reference}.html multiqc_report.html
+    # Save RMarkdown report
+    cp result/*${reference}.html ${input_file.baseName}_pcgr.html
     """
+}
+
+process report {
+    label 'process_low'
+    publishDir "${params.outdir}/MultiQC", mode: 'copy', pattern: "multiqc_report.html"
+
+    input:
+    file report from out_pcgr.collect()
+    each file("report.py") from run_report
+
+
+    output:
+    file "multiqc_report.html"
+
+    script:
+    "report.py $report"
+
 }
