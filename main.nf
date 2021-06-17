@@ -46,7 +46,7 @@ if (params.help) {
 // - Check input mode 
 if (!params.vcf && !params.csv){ exit 1, "Essential parameters missing"}
 
-if (params.vcf && params.csv){ exit 1, "Multiple modes selected. Run single file mode (--vcf and --name) or multiple file (--csv) independently"}
+if (params.vcf && params.csv){ exit 1, "Multiple modes selected. Run single file mode (--vcf) or multiple file (--csv) independently"}
 
 if (params.vcf){
     Channel
