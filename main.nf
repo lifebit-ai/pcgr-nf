@@ -88,23 +88,23 @@ run_report = Channel.fromPath("${projectDir}/bin/report.py",  type: 'file', foll
 pcgr_toml_config = params.pcgr_config ? Channel.value(file(params.pcgr_config)) : Channel.fromPath("${projectDir}/bin/pcgr.toml", type: 'file', followLinks: false) 
 
 if (!params.skip_filtering) {
-  process vcffilter {
-      tag "$input_file"
-      label 'process_low'
+    process vcffilter {
+        tag "$input_file"
+        label 'process_low'
 
-      input:
-      file input_file from ch_input
+        input:
+        file input_file from ch_input
 
-      output:
-      file "*filtered.vcf" into out_vcf_filter
+        output:
+        file "*filtered.vcf" into out_vcf_filter
 
-      script:
-      """
-      vcffilter -s -f "QD > ${params.min_qd} | FS < ${params.max_fs} | SOR < ${params.max_sor} | MQ > ${params.min_mq}" $input_file > ${input_file.baseName}_filtered.vcf
-      """
-  }
+        script:
+        """
+        vcffilter -s -f "QD > ${params.min_qd} | FS < ${params.max_fs} | SOR < ${params.max_sor} | MQ > ${params.min_mq}" $input_file > ${input_file.baseName}_filtered.vcf
+        """
+    }
 }else{
-  ch_vcf_for_pcgr = ch_input
+    ch_vcf_for_pcgr = ch_input
 }
 
 
