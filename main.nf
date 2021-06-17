@@ -4,7 +4,7 @@ def helpMessage() {
     log.info """
     Usage:
     The typical command for running the pipeline is as follows:
-    nextflow run main.nf --input sample.csv [Options]
+    nextflow run main.nf --vcf sample.vcf [Options]
     
     Essential paramenters:
         Single File Mode:
