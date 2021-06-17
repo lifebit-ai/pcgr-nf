@@ -54,6 +54,8 @@ Channel.fromPath(params.pcgr_config)
     .ifEmpty { exit 1, "Cannot find config file : ${params.pcgr_config}" }
     .set{ config }
 
+if (!params.skip_filtering) {
+
 process vcffilter {
     tag "$input_file"
     label 'process_low'
@@ -69,6 +71,10 @@ process vcffilter {
     vcffilter -s -f "QD > ${params.min_qd} | FS < ${params.max_fs} | SOR < ${params.max_sor} | MQ > ${params.min_mq}" $input_file > filtered.vcf
     """
 }
+}else{
+ch_vcf_for_pcgr = ch_input
+}
+
 
 process pcgr {
     tag "$name"
@@ -77,7 +83,7 @@ process pcgr {
     publishDir "${params.outdir}/MultiQC", mode: 'copy', pattern: "multiqc_report.html"
 
     input:
-    file input_file from out_vcf_filter
+    file input_file from ch_vcf_for_pcgr
     path data from data_bundle
     val name from sample_name
     path config_file from config
