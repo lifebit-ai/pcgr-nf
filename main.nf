@@ -64,6 +64,16 @@ if (params.csv){
         .set { ch_input }
 }
 
+// check for valid reference options 
+def human_reference_expected = ['grch37', 'grch38'] as Set
+def parameter_diff = human_reference_expected - params.pcgr_genome
+if (parameter_diff.size() > 1){
+        println "[Pipeline warning] Parameter $params.pcgr_genome is not valid in the pipeline! Running with default 'grch38'\n"
+        ch_reference = Channel.value('grch38')
+    } else {
+        ch_reference = Channel.value(params.pcgr_genome)
+    }
+
 Channel.fromPath(params.pcgr_data)
     .ifEmpty { exit 1, "Cannot find data bundle path : ${params.pcgr_data}" }
     .set{ data_bundle }
@@ -98,6 +108,7 @@ process pcgr {
     file input_file from out_vcf_filter
     path data from data_bundle
     path config_file from config
+    val reference from ch_reference
 
     output:
     file "multiqc_report.html"
@@ -105,8 +116,8 @@ process pcgr {
     script:
     """
     mkdir result
-    pcgr.py --input_vcf $input_file --pcgr_dir $data --output_dir result/ --genome_assembly $params.pcgr_genome --conf $config_file --sample_id $input_file.baseName --no_vcf_validate --no-docker
+    pcgr.py --input_vcf $input_file --pcgr_dir $data --output_dir result/ --genome_assembly $reference --conf $config_file --sample_id $input_file.baseName --no_vcf_validate --no-docker
 
-    cp result/*${params.pcgr_genome}.html multiqc_report.html
+    cp result/*${reference}.html multiqc_report.html
     """
 }
