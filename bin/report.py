@@ -21,7 +21,7 @@ html_template_top = """
             }
         </script>
     </head>
-    <body style="background-color: #666666">
+    <body style="background-color: #FFFFFF">
         <div id="root">
             <form>
             <select name="list" id="list" accesskey="target">
@@ -37,12 +37,13 @@ html_template_bottom = """
 """
 def __main__():
     
-    pcgr_reports = sys.argv[1].split()
+    pcgr_reports = sys.argv[1:]
+    print(pcgr_reports)
 
     if len(pcgr_reports) == 1:
         shutil.copyfile(pcgr_reports[0], "multiqc_report.html", follow_symlinks=True)
     else:
-        with open("multiqc_report.html", w) as fh:
+        with open("multiqc_report.html", "w") as fh:
             fh.write(html_template_top)
             for report in pcgr_reports:
                 str_option = "                <option value='{0}'>{0}</option>\n".format(report)
