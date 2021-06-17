@@ -105,7 +105,7 @@ process vcffilter {
 
 process pcgr {
     tag "$input_file"
-    label 'process_low'
+    label 'process_high'
     publishDir "${params.outdir}", mode: 'copy'
 
     input:
@@ -117,6 +117,7 @@ process pcgr {
     output:
     file "*_pcgr.html" into out_pcgr
     file "result/*"
+
     script:
     """
     # Modify config_toml pass the params
@@ -132,7 +133,7 @@ process pcgr {
     sed -i "s/maf_gnomad_nfe_placeholder/${params.maf_gnomad_nfe}/g" new_config.toml
     sed -i "s/maf_gnomad_amr_placeholder/${params.maf_gnomad_amr}/g" new_config.toml
     sed -i "s/maf_gnomad_afr_placeholder/${params.maf_gnomad_afr}/g" new_config.toml
-    sed -i "s/maf_gnomad_asj_placeholder/${params.maf_gnomad_ajs}/g" new_config.toml
+    sed -i "s/maf_gnomad_asj_placeholder/${params.maf_gnomad_asj}/g" new_config.toml
     sed -i "s/maf_gnomad_sas_placeholder/${params.maf_gnomad_sas}/g" new_config.toml
     sed -i "s/maf_gnomad_eas_placeholder/${params.maf_gnomad_eas}/g" new_config.toml
     sed -i "s/maf_gnomad_fin_placeholder/${params.maf_gnomad_fin}/g" new_config.toml
@@ -159,7 +160,7 @@ process pcgr {
 
     # Run PCGR
     mkdir result
-    pcgr.py --input_vcf $input_file --pcgr_dir $data --output_dir result/ --genome_assembly $reference --conf $config_file --sample_id $input_file.baseName --no_vcf_validate --no-docker
+    pcgr.py --input_vcf $input_file --pcgr_dir $data --output_dir result/ --genome_assembly $reference --conf new_config.toml --sample_id $input_file.baseName --no_vcf_validate --no-docker
 
     # Save RMarkdown report
     cp result/*${reference}.html ${input_file.baseName}_pcgr.html
@@ -179,6 +180,6 @@ process report {
     file "multiqc_report.html"
 
     script:
-    "report.py $report"
+    "python report.py $report"
 
 }
