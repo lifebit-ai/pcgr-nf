@@ -110,14 +110,14 @@ if (!params.skip_filtering) {
 
 process pcgr {
     tag "$input_file"
-    label 'process_high'
+    label 'process_low'
     publishDir "${params.outdir}", mode: 'copy'
 
     input:
     file input_file from ch_vcf_for_pcgr
-    path data from data_bundle
-    file(config_toml) from pcgr_toml_config
-    val reference from ch_reference
+    each path(data) from data_bundle
+    each file(config_toml) from pcgr_toml_config
+    each reference from ch_reference
 
     output:
     file "*_pcgr.html" into out_pcgr
@@ -182,7 +182,7 @@ process report {
 
 
     output:
-    file "multiqc_report.html"
+    file "*.html"
 
     script:
     "python report.py $report"
