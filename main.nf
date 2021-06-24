@@ -50,7 +50,7 @@ if (params.vcf && params.csv){ exit 1, "Multiple modes selected. Run single file
 
 if (params.vcf){
     Channel
-        .fromPath(params.input)
+        .fromPath(params.vcf)
         .ifEmpty { exit 1, "Cannot find input file : ${params.vcf}" }
         .set { ch_input }
 }
