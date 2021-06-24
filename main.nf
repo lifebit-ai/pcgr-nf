@@ -134,6 +134,7 @@ if (!params.skip_filtering) {
 
 process pcgr {
     tag "$input_file"
+    //label 'process_high'
     label 'process_low'
     publishDir "${params.outdir}", mode: 'copy'
 
@@ -189,7 +190,7 @@ process pcgr {
 
     # Run PCGR
     mkdir result
-    pcgr.py --input_vcf $input_file --pcgr_dir $data --output_dir result/ --genome_assembly $reference --conf new_config.toml --sample_id $input_file.baseName --no_vcf_validate --no-docker
+    pcgr.py --tumor_site ${params.pcgr_tumor_site} --input_vcf $input_file --pcgr_dir $data --output_dir result/ --genome_assembly $reference --conf new_config.toml --sample_id $input_file.baseName --no_vcf_validate --no-docker
 
     # Save RMarkdown report
     cp result/*${reference}.html ${input_file.baseName}_pcgr.html
@@ -198,15 +199,15 @@ process pcgr {
 
 process report {
     label 'process_low'
-    publishDir "${params.outdir}/MultiQC", mode: 'copy', pattern: "multiqc_report.html"
+    publishDir "${params.outdir}/MultiQC", mode: 'copy', pattern: "*.html"
 
     input:
     file report from out_pcgr.collect()
     each file("report.py") from run_report
 
-
     output:
     file "*.html"
+    file report
 
     script:
     "python report.py $report"
