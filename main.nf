@@ -84,23 +84,47 @@ if (parameter_diff.size() > 1){
 
 // Custum scripts
 projectDir = workflow.projectDir
+getfilter = Channel.fromPath("${projectDir}/bin/filtervcf.py",  type: 'file', followLinks: false)
 run_report = Channel.fromPath("${projectDir}/bin/report.py",  type: 'file', followLinks: false)
 pcgr_toml_config = params.pcgr_config ? Channel.value(file(params.pcgr_config)) : Channel.fromPath("${projectDir}/bin/pcgr.toml", type: 'file', followLinks: false) 
 
 if (!params.skip_filtering) {
-    process vcffilter {
+
+    process check_fields {
         tag "$input_file"
         label 'process_low'
 
         input:
         file input_file from ch_input
+        each file("filtervcf.py") from getfilter
 
         output:
-        file "*filtered.vcf" into out_vcf_filter
+        file input_file into ch_input_2
+        file("filter") into filterstr
+
+        script:
+        "python filtervcf.py $input_file $params.min_qd $params.max_fs $params.max_sor $params.min_mq"
+    }
+
+    process vcffilter {
+        tag "$input_file"
+        label 'process_low'
+
+        input:
+        file input_file from ch_input_2
+        file filter from filterstr
+
+        output:
+        file "*filtered.vcf" into ch_vcf_for_pcgr
 
         script:
         """
-        vcffilter -s -f "QD > ${params.min_qd} | FS < ${params.max_fs} | SOR < ${params.max_sor} | MQ > ${params.min_mq}" $input_file > ${input_file.baseName}_filtered.vcf
+        if [ -s $filter ]; then 
+            echo "No tags present in VCF for filtering"
+            cp $input_file ${input_file.baseName}_filtered.vcf
+        else
+            vcffilter -s -f \$(cat $filter) $input_file > ${input_file.baseName}_filtered.vcf
+        fi
         """
     }
 }else{
