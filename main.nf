@@ -134,8 +134,7 @@ if (!params.skip_filtering) {
 
 process pcgr {
     tag "$input_file"
-    //label 'process_high'
-    label 'process_low'
+    label 'process_high'
     publishDir "${params.outdir}", mode: 'copy'
 
     input:
