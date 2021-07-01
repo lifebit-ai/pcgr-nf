@@ -199,7 +199,7 @@ process pcgr {
 }
 
 process report {
-    label 'process_low'
+    label 'process_high'
     publishDir "${params.outdir}/MultiQC", mode: 'copy'
 
     input:
