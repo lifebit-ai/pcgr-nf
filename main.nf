@@ -210,11 +210,9 @@ process report {
 
     output:
     file "*.html"
-    file style
-    file logo
     file report
 
     script:
-    "python report.py $report"
+    "python report.py $style $logo $report"
 
 }

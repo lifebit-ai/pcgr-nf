@@ -8,6 +8,9 @@ import html
 html_template = """
 <!DOCTYPE html>
 <html lang="en">
+    <style>
+        {0}
+    </style>
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -17,27 +20,32 @@ html_template = """
     <body style="background-color: #FFFFFF">
         <div id="root">
             <h1>PCGR Report Overview</h1>
-            <img src="logo.png" width=100 style="position:absolute;top:4px;bottom:4px;right:4px;" />
+            <img src="data:image/png;base64,{1}" width=100 style="position:absolute;top:4px;bottom:4px;right:4px;" />
         </div>
         <div id="TOC">
             <p class="toc_title">Contents</p>
             <ul class="toc_list">
-            {0}
+            {2}
         </ul>
         </div>
-        {1}
+        {3}
     </body>
 </html>
 """
 
 def __main__():
-    
-    pcgr_reports = sys.argv[1:]
+    css_style = sys.argv[1]
+    lifebit_logo = sys.arg[2]
+    pcgr_reports = sys.argv[3:]
     print(pcgr_reports)
 
     if len(pcgr_reports) == 1:
         shutil.copyfile(pcgr_reports[0], "multiqc_report.html", follow_symlinks=True)
     else:
+
+        style_css = open(css_style).read()
+        logo_uri = base64.b64encode(open(lifebit_logo, 'rb').read()).decode('utf-8')
+
         toc_contents = ""
         iframe_div_contents = ""
 
@@ -57,6 +65,6 @@ def __main__():
                                     """.format(sample_id, html.escape(report_content, quote=True))
 
         with open("multiqc_report.html", "w") as fh:
-            fh.write(html_template.format(toc_contents, iframe_div_contents))
+            fh.write(html_template.format(style_css, logo_uri, toc_contents, iframe_div_contents))
 
 if __name__=="__main__": __main__()
