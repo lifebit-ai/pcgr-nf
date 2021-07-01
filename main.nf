@@ -136,7 +136,7 @@ if (!params.skip_filtering) {
 
 process pcgr {
     tag "$input_file"
-    label 'process_low'
+    label 'process_high'
     publishDir "${params.outdir}", mode: 'copy'
 
     input:
@@ -199,7 +199,7 @@ process pcgr {
 }
 
 process report {
-    label 'process_high'
+    label 'process_low'
     publishDir "${params.outdir}/MultiQC", mode: 'copy'
 
     input:
@@ -210,9 +210,9 @@ process report {
 
     output:
     file "*.html"
-    file report
     file style
     file logo
+    file report
 
     script:
     "python report.py $report"

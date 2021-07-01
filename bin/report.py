@@ -3,6 +3,7 @@
 import os
 import sys
 import shutil
+import html
 
 html_template = """
 <!DOCTYPE html>
@@ -42,6 +43,7 @@ def __main__():
 
         for report in pcgr_reports:
             sample_id = report.replace("_pcgr.html","")
+            report_content = open(report).read().replace('\n', '')
             toc_contents += """
                             <li><a href="#{0}">{0}</a>
                             """.format(sample_id)
@@ -49,10 +51,10 @@ def __main__():
                                     <div>
                                         <h2 id="{0}">{0}</h2>
                                         <p align="center">
-                                            <iframe src="{1}" name="targetframe" allowTransparency="true" scrolling="yes" frameborder="0" width="700px" height="500"></iframe>
+                                            <iframe seamless sandbox srcdoc="{1}" name="targetframe" allowTransparency="true" scrolling="yes" frameborder="0" width="700px" height="500"></iframe>
                                         </p>
                                     </div>
-                                    """.format(sample_id, report)
+                                    """.format(sample_id, html.escape(report_content, quote=True))
 
         with open("multiqc_report.html", "w") as fh:
             fh.write(html_template.format(toc_contents, iframe_div_contents))
