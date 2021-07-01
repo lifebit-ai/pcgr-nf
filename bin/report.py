@@ -4,6 +4,7 @@ import os
 import sys
 import shutil
 import html
+import base64
 
 html_template = """
 <!DOCTYPE html>
@@ -35,7 +36,7 @@ html_template = """
 
 def __main__():
     css_style = sys.argv[1]
-    lifebit_logo = sys.arg[2]
+    lifebit_logo = sys.argv[2]
     pcgr_reports = sys.argv[3:]
     print(pcgr_reports)
 
