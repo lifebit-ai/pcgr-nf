@@ -87,6 +87,8 @@ projectDir = workflow.projectDir
 getfilter = Channel.fromPath("${projectDir}/bin/filtervcf.py",  type: 'file', followLinks: false)
 run_report = Channel.fromPath("${projectDir}/bin/report.py",  type: 'file', followLinks: false)
 pcgr_toml_config = params.pcgr_config ? Channel.value(file(params.pcgr_config)) : Channel.fromPath("${projectDir}/bin/pcgr.toml", type: 'file', followLinks: false) 
+style_css = Channel.fromPath("${projectDir}/bin/style.css",  type: 'file', followLinks: false)
+logo_png = Channel.fromPath("${projectDir}/bin/logo.png",  type: 'file', followLinks: false)
 
 if (!params.skip_filtering) {
 
@@ -134,7 +136,7 @@ if (!params.skip_filtering) {
 
 process pcgr {
     tag "$input_file"
-    label 'process_high'
+    label 'process_low'
     publishDir "${params.outdir}", mode: 'copy'
 
     input:
@@ -198,15 +200,19 @@ process pcgr {
 
 process report {
     label 'process_low'
-    publishDir "${params.outdir}/MultiQC", mode: 'copy', pattern: "*.html"
+    publishDir "${params.outdir}/MultiQC", mode: 'copy'
 
     input:
     file report from out_pcgr.collect()
     each file("report.py") from run_report
+    file style from style_css
+    file logo from logo_png
 
     output:
     file "*.html"
     file report
+    file style
+    file logo
 
     script:
     "python report.py $report"
