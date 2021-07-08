@@ -1,0 +1,3 @@
+vcf
+s3://fast-ngs/cloudos-public-data-ines/test.vcf
+s3://fast-ngs/cloudos-public-data-ines/two.vcf

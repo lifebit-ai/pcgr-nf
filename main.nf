@@ -4,11 +4,17 @@ def helpMessage() {
     log.info """
     Usage:
     The typical command for running the pipeline is as follows:
-    nextflow run main.nf --input sample.csv [Options]
+    nextflow run main.nf --vcf sample.vcf [Options]
     
-    Inputs Options:
-    --input         Input VCF file
-    --name          Sample name
+    Essential paramenters:
+        Single File Mode:
+    --vcf           Input `VCF` file.
+                    See example in `testdata/test.vcf`. 
+
+        Multiple File Mode:
+    --csv           A list of `VCF` files.
+                    Should be a `*.csv` file with a header called `vcf` and the path to each file, one per line. 
+                    See example in `testdata/list-vcf-files-local.csv`.
 
     PCGR Options:
     --pcgr_config   Tool config file (path)
@@ -25,26 +31,38 @@ def helpMessage() {
                     (default: $params.max_memory)
     --max_time      Maximum time (time unit)
                     (default: $params.max_time)
-    See here for more info: https://github.com/lifebit-ai/hla/blob/master/docs/usage.md
+    See here for more info: https://github.com/lifebit-ai/pcgr-nf
     """.stripIndent()
 }
 
 // Show help message
 if (params.help) {
-  helpMessage()
-  exit 0
+    helpMessage()
+    exit 0
 }
 
 // Define Channels from input
-Channel
-    .fromPath(params.input)
-    .ifEmpty { exit 1, "Cannot find input file : ${params.input}" }
-    .set { ch_input }
 
-Channel
-    .from(params.name)
-    .ifEmpty { exit 1, "Cannot find input name : ${params.name}" }
-    .set { sample_name }
+// - Check input mode 
+if (!params.vcf && !params.csv){ exit 1, "Essential parameters missing"}
+
+if (params.vcf && params.csv){ exit 1, "Multiple modes selected. Run single file mode (--vcf) or multiple file (--csv) independently"}
+
+if (params.vcf){
+    Channel
+        .fromPath(params.vcf)
+        .ifEmpty { exit 1, "Cannot find input file : ${params.vcf}" }
+        .set { ch_input }
+}
+
+if (params.csv){
+    Channel
+        .fromPath(params.csv)
+        .splitCsv(header:true)
+        .map{ row -> file(row.vcf) }
+        .flatten()
+        .set { ch_input }
+}
 
 Channel.fromPath(params.pcgr_data)
     .ifEmpty { exit 1, "Cannot find data bundle path : ${params.pcgr_data}" }
@@ -60,152 +78,147 @@ custum_pcgr = Channel.fromPath("${projectDir}/bin/modified_pcgr.py",  type: 'fil
 combine_runs = Channel.fromPath("${projectDir}/bin/pcgr_combine_runs.py",  type: 'file', followLinks: false)
 run_report = Channel.fromPath("${projectDir}/bin/pcgr_report.py",  type: 'file', followLinks: false)
 
-process vcffilter {
-    tag "$input_file"
-    label 'process_low'
+// Check for valid reference options 
+def human_reference_expected = ['grch37', 'grch38'] as Set
+def parameter_diff = human_reference_expected - params.pcgr_genome
+if (parameter_diff.size() > 1){
+        println "[Pipeline warning] Parameter $params.pcgr_genome is not valid in the pipeline! Running with default 'grch38'\n"
+        ch_reference = Channel.value('grch38')
+    } else {
+        ch_reference = Channel.value(params.pcgr_genome)
+    }
 
-    input:
-    file input_file from ch_input
+// Custum scripts
+projectDir = workflow.projectDir
+getfilter = Channel.fromPath("${projectDir}/bin/filtervcf.py",  type: 'file', followLinks: false)
+run_report = Channel.fromPath("${projectDir}/bin/report.py",  type: 'file', followLinks: false)
+pcgr_toml_config = params.pcgr_config ? Channel.value(file(params.pcgr_config)) : Channel.fromPath("${projectDir}/bin/pcgr.toml", type: 'file', followLinks: false) 
+style_css = Channel.fromPath("${projectDir}/bin/style.css",  type: 'file', followLinks: false)
+logo_png = Channel.fromPath("${projectDir}/bin/logo.png",  type: 'file', followLinks: false)
 
-    output:
-    file "filtered.vcf" into out_vcffilter
+if (!params.skip_filtering) {
 
-    script:
-    """
-    vcffilter -s -f "QD > ${params.min_qd} | FS < ${params.max_fs} | SOR < ${params.max_sor} | MQ > ${params.min_mq}" $input_file > filtered.vcf
-    """
+    process check_fields {
+        tag "$input_file"
+        label 'process_low'
+
+        input:
+        file input_file from ch_input
+        each file("filtervcf.py") from getfilter
+
+        output:
+        file input_file into ch_input_2
+        file("filter") into filterstr
+
+        script:
+        "python filtervcf.py $input_file $params.min_qd $params.max_fs $params.max_sor $params.min_mq"
+    }
+
+    process vcffilter {
+        tag "$input_file"
+        label 'process_low'
+
+        input:
+        file input_file from ch_input_2
+        file filter from filterstr
+
+        output:
+        file "*filtered.vcf" into ch_vcf_for_pcgr
+
+        script:
+        """
+        if [ -s $filter ]; then 
+            echo "No tags present in VCF for filtering"
+            cp $input_file ${input_file.baseName}_filtered.vcf
+        else
+            vcffilter -s -f \$(cat $filter) $input_file > ${input_file.baseName}_filtered.vcf
+        fi
+        """
+    }
+}else{
+    ch_vcf_for_pcgr = ch_input
 }
 
-process sanitise_vcf {
-    tag "$input_file"
-    label 'low_memory'
-
-    input:
-    file(input_file) from out_vcffilter
-
-    output:
-    file("fixed.vcf") into in_split_vcf
-
-    """
-    bcftools +fixploidy $input_file > fixed.vcf
-    """
-}
-
-process split_vcf_by_chr {
-    tag "$input_file"
-    label 'low_memory'
-
-    input:
-    file(input_file) from in_split_vcf
-
-    output:
-    file("*.recode.vcf") into ch_variant_query_sets
-
-    """
-    seq  -f "chr%1g" 22 | xargs -n1 -P4 -I {} vcftools --gzvcf ${input_file} --chr {} --recode --recode-INFO-all --out ${input_file.baseName}.{}.vcf
-    for file in \$(ls *.recode.vcf); do res=\$(cat \$file |grep -v ^# | wc -l); echo \$res; if (( \$res == 0)); then echo \$file; rm \$file;  fi; done
-    """
-}
-
-ch_variant_query_sets_flat = ch_variant_query_sets.flatten()
 
 process pcgr {
     tag "$input_file"
-    label 'low_memory'
-    publishDir "${params.outdir}/pcgr/${input_file.baseName}", mode: 'copy'
+    label 'process_high'
+    publishDir "${params.outdir}", mode: 'copy'
 
     input:
-    file input_file from ch_variant_query_sets_flat
+    file input_file from ch_vcf_for_pcgr
     each path(data) from data_bundle
-    each file(config_file) from config
-    each file("modified_pcgr.py") from custum_pcgr
+    each file(config_toml) from pcgr_toml_config
+    each reference from ch_reference
 
     output:
-    file "result/*" into out_pcgr
-    file("*config_options.json") into pcgr_config_option
-    file("*arg_dict.json") into pcgr_arg_dict
-    file("*host_directories.json") into pcgr_host_directories
-    
+    file "*_pcgr.html" into out_pcgr
+    file "result/*"
+
     script:
     """
+    # Modify config_toml pass the params
+    cp ${config_toml} new_config.toml
+
+    # Swap placeholders with user provided values
+    sed -i "s/maf_onekg_eur_placeholder/${params.maf_onekg_eur}/g" new_config.toml
+    sed -i "s/maf_onekg_amr_placeholder/${params.maf_onekg_amr}/g" new_config.toml
+    sed -i "s/maf_onekg_afr_placeholder/${params.maf_onekg_afr}/g" new_config.toml
+    sed -i "s/maf_onekg_sas_placeholder/${params.maf_onekg_sas}/g" new_config.toml
+    sed -i "s/maf_onekg_eas_placeholder/${params.maf_onekg_eas}/g" new_config.toml
+    sed -i "s/maf_onekg_global_placeholder/${params.maf_onekg_global}/g" new_config.toml
+    sed -i "s/maf_gnomad_nfe_placeholder/${params.maf_gnomad_nfe}/g" new_config.toml
+    sed -i "s/maf_gnomad_amr_placeholder/${params.maf_gnomad_amr}/g" new_config.toml
+    sed -i "s/maf_gnomad_afr_placeholder/${params.maf_gnomad_afr}/g" new_config.toml
+    sed -i "s/maf_gnomad_asj_placeholder/${params.maf_gnomad_asj}/g" new_config.toml
+    sed -i "s/maf_gnomad_sas_placeholder/${params.maf_gnomad_sas}/g" new_config.toml
+    sed -i "s/maf_gnomad_eas_placeholder/${params.maf_gnomad_eas}/g" new_config.toml
+    sed -i "s/maf_gnomad_fin_placeholder/${params.maf_gnomad_fin}/g" new_config.toml
+    sed -i "s/maf_gnomad_oth_placeholder/${params.maf_gnomad_oth}/g" new_config.toml
+    sed -i "s/maf_gnomad_global_placeholder/${params.maf_gnomad_global}/g" new_config.toml
+    sed -i "s/exclude_pon_placeholder/${params.exclude_pon}/g" new_config.toml
+    sed -i "s/exclude_likely_hom_germline_placeholder/${params.exclude_likely_hom_germline}/g" new_config.toml
+    sed -i "s/exclude_likely_het_germline_placeholder/${params.exclude_likely_het_germline}/g" new_config.toml
+    sed -i "s/exclude_dbsnp_nonsomatic_placeholder/${params.exclude_dbsnp_nonsomatic}/g" new_config.toml
+    sed -i "s/exclude_nonexonic_placeholder/${params.exclude_nonexonic}/g" new_config.toml
+    sed -i "s/tumor_dp_tag_placeholder/${params.tumor_dp_tag}/g" new_config.toml
+    sed -i "s/tumor_af_tag_placeholder/${params.tumor_af_tag}/g" new_config.toml
+    sed -i "s/control_dp_tag_placeholder/${params.control_dp_tag}/g" new_config.toml
+    sed -i "s/control_af_tag_placeholder/${params.control_af_tag}/g" new_config.toml
+    sed -i "s/call_conf_tag_placeholder/${params.call_conf_tag}/g" new_config.toml
+    sed -i "s/report_theme_placeholder/${params.report_theme}/g" new_config.toml
+    sed -i "s/custom_tags_placeholder/${params.custom_tags}/g" new_config.toml
+    sed -i "s/list_noncoding_placeholder/${params.list_noncoding}/g" new_config.toml
+    sed -i "s/n_vcfanno_proc_placeholder/${params.n_vcfanno_proc}/g" new_config.toml
+    sed -i "s/n_vep_forks_placeholder/${params.n_vep_forks}/g" new_config.toml
+    sed -i "s/vep_pick_order_placeholder/${params.vep_pick_order}/g" new_config.toml
+    sed -i "s/vep_skip_intergenic_placeholder/${params.vep_skip_intergenic}/g" new_config.toml
+    sed -i "s/vcf2maf_placeholder/${params.vcf2maf}/g" new_config.toml
+
+    # Run PCGR
     mkdir result
-    echo modified_pcgr.py --input_vcf $input_file --pcgr_dir $data --output_dir result/ --genome_assembly $params.pcgr_genome --conf $config_file --sample_id ${input_file.baseName} --no_vcf_validate --no-docker
-    
-    python modified_pcgr.py --input_vcf $input_file --pcgr_dir $data --output_dir result/ --genome_assembly $params.pcgr_genome --conf $config_file --sample_id ${input_file.baseName} --no_vcf_validate --no-docker
-    mv arg_dict.json ${input_file.baseName}_arg_dict.json
-    mv config_options.json ${input_file.baseName}_config_options.json
-    mv host_directories.json ${input_file.baseName}_host_directories.json
-    #rm -r result/pcgr_rmarkdown result/pcgr_flexdb
-    """
-}
+    pcgr.py --tumor_site ${params.pcgr_tumor_site} --input_vcf $input_file --pcgr_dir $data --output_dir result/ --genome_assembly $reference --conf new_config.toml --sample_id $input_file.baseName --no_vcf_validate --no-docker
 
-// check filtering parameters... in a hacky way
-def filter_mode_expected = ['all', '1', '2', '3', '4'] as Set
-def parameter_diff = filter_mode_expected - params.filter
-    if (parameter_diff.size() > 4){
-        println "[Pipeline warning] Parameter $params.filter is not valid in the pipeline! Running with default 'all'\n"
-        IN_filter_mode = Channel.value('all')
-    } else {
-        IN_filter_mode = Channel.value(params.filter)
-    }
-
-process combine_pcgr {
-    label 'low_memory'
-    publishDir "${params.outdir}/pcgr/combine", mode: 'copy'
-
-    input:
-    val filter_value from IN_filter_mode
-    file output_files from out_pcgr.collect()
-    each file("pcgr_combine_runs.py") from combine_runs
-
-    output:
-    file("combined.filtered.snvs_indels.tiers.tsv")
-    file("combined.recode.pcgr_acmg.grch38.pass.tsv") into tsv_combined_filtered
-
-    script:
-    """
-    python pcgr_combine_runs.py $filter_value $output_files
-    """
-}
-
-process compress_tsv {
-    label 'low_memory'
-    input:
-    file tsv from tsv_combined_filtered
-
-    output:
-    file("*gz") into compressed_tsv_combined_filtered
-
-    script:
-    """
-    gzip -f ${tsv}
+    # Save RMarkdown report
+    cp result/*${reference}.html ${input_file.baseName}_pcgr.html
     """
 }
 
 process report {
-    tag "$name"
-    label 'low_memory'
-
-    publishDir "${params.outdir}/MultiQC", mode: 'copy', pattern: "multiqc_report.html"
+    label 'process_low'
+    publishDir "${params.outdir}/MultiQC", mode: 'copy'
 
     input:
-    val name from sample_name
-    file(config_file) from config_2
-    path(data) from data_bundle_2
-    file(result_tsv) from compressed_tsv_combined_filtered
-    each file("pcgr_report.py") from run_report
-    file config_option from pcgr_config_option
-    file host_directories from pcgr_host_directories
+    file report from out_pcgr.collect()
+    each file("report.py") from run_report
+    file style from style_css
+    file logo from logo_png
 
     output:
-    file "multiqc_report.html"
+    file "*.html"
+    file report
 
     script:
-    """
-    mkdir result
-    python pcgr_report.py $name $config_file $data $params.pcgr_genome $result_tsv $config_option $host_directories \$PWD
-    
-    cp result/*${params.pcgr_genome}.html multiqc_report.html
-    """
-}
+    "python report.py $style $logo $report"
 
+}
