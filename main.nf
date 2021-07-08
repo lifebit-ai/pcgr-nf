@@ -66,11 +66,17 @@ if (params.csv){
 
 Channel.fromPath(params.pcgr_data)
     .ifEmpty { exit 1, "Cannot find data bundle path : ${params.pcgr_data}" }
-    .set{ data_bundle }
+    .into{ data_bundle ; data_bundle_2}
 
 Channel.fromPath(params.pcgr_config)
     .ifEmpty { exit 1, "Cannot find config file : ${params.pcgr_config}" }
-    .set{ config }
+    .into{ config ; config_2 }
+
+// Custum scripts
+projectDir = workflow.projectDir
+custum_pcgr = Channel.fromPath("${projectDir}/bin/modified_pcgr.py",  type: 'file', followLinks: false)
+combine_runs = Channel.fromPath("${projectDir}/bin/pcgr_combine_runs.py",  type: 'file', followLinks: false)
+run_report = Channel.fromPath("${projectDir}/bin/pcgr_report.py",  type: 'file', followLinks: false)
 
 // Check for valid reference options 
 def human_reference_expected = ['grch37', 'grch38'] as Set
