@@ -82,11 +82,22 @@ if (parameter_diff.size() > 1){
         ch_reference = Channel.value(params.pcgr_genome)
     }
 
+// Check for valid output mode options 
+def report_expected = ['table', 'report'] as Set
+def report_parameter_diff = report_expected - params.report_mode
+if (parameter_diff.size() > 1){
+        println "[Pipeline warning] Parameter $params.report_mode is not valid in the pipeline! Running with default 'report'\n"
+        report_mode = 'report'
+    } else {
+        report_mode = params.report_mode
+    }
+
 // Custum scripts
 projectDir = workflow.projectDir
 getfilter = Channel.fromPath("${projectDir}/bin/filtervcf.py",  type: 'file', followLinks: false)
 run_report = Channel.fromPath("${projectDir}/bin/report.py",  type: 'file', followLinks: false)
 pcgr_toml_config = params.pcgr_config ? Channel.value(file(params.pcgr_config)) : Channel.fromPath("${projectDir}/bin/pcgr.toml", type: 'file', followLinks: false) 
+combine_tables = Channel.fromPath("${projectDir}/bin/combine.py",  type: 'file', followLinks: false)
 
 if (!params.skip_filtering) {
 
@@ -145,6 +156,7 @@ process pcgr {
 
     output:
     file "*_pcgr.html" into out_pcgr
+    file "*tiers.tsv" into pcgr_tsv
     file "result/*"
 
     script:
@@ -196,19 +208,35 @@ process pcgr {
     """
 }
 
-process report {
-    label 'process_low'
-    publishDir "${params.outdir}/MultiQC", mode: 'copy', pattern: "*.html"
+if (report_mode == 'report') {
+    process report {
+        label 'process_low'
+        publishDir "${params.outdir}/MultiQC", mode: 'copy', pattern: "*.html"
 
-    input:
-    file report from out_pcgr.collect()
-    each file("report.py") from run_report
+        input:
+        file report from out_pcgr.collect()
+        each file("report.py") from run_report
 
-    output:
-    file "*.html"
-    file report
+        output:
+        file "*.html"
+        file report
 
-    script:
-    "python report.py $report"
+        script:
+        "python report.py $report"
+    }
+} else {
 
+    process combine_tables {
+        label "process_low"
+        
+        input:
+        file tables from pcgr_tsv.collect()
+        each file("combine.py") from combine_tables
+
+        output:
+        file("combined.tsv") into to_report_tsv
+
+        script:
+        "python combine.py $report"
+    }
 }
