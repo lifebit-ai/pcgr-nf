@@ -208,6 +208,20 @@ process pcgr {
     """
 }
 
+process combine_tables {
+    label "process_low"
+    
+    input:
+    file tables from pcgr_tsv.collect()
+    each file("combine.py") from combine_tables
+
+    output:
+    file("combined.tsv") into combined_tiers
+
+    script:
+    "python combine.py $report"
+}
+
 if (report_mode == 'report') {
     process report {
         label 'process_low'
@@ -225,18 +239,21 @@ if (report_mode == 'report') {
         "python report.py $report"
     }
 } else {
+    process report {
+        label 'process_low'
+        publishDir "${params.outdir}/MultiQC", mode: 'copy', pattern: "*.html"
 
-    process combine_tables {
-        label "process_low"
-        
         input:
-        file tables from pcgr_tsv.collect()
-        each file("combine.py") from combine_tables
+        file report from out_pcgr.collect()
+        file tiers into combined_tiers
+        each file("report.py") from run_report
 
         output:
-        file("combined.tsv") into to_report_tsv
+        file "*.html"
+        file report
 
         script:
-        "python combine.py $report"
+        "python report.py $report"
     }
+
 }
