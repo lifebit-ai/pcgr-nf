@@ -19,6 +19,8 @@ def __main__():
     df = pd.read_csv(combined, delimiter='\t', header=0)
     pivot = pd.DataFrame(columns=['GENOMIC_CHANGE']+columns)
 
+    print("Number of variants found:", len(df['GENOMIC_CHANGE'].unique()))
+    
     for variant in df['GENOMIC_CHANGE'].unique():
         print("adding....", variant)
         row = {'GENOMIC_CHANGE':variant}
@@ -27,6 +29,5 @@ def __main__():
         pivot = pivot.append(row,ignore_index=True)
 
     pivot.to_csv("pivot.tsv", sep='\t', index=False)
-
 
 if __name__=="__main__": __main__()
