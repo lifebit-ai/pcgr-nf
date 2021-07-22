@@ -98,7 +98,7 @@ getfilter = Channel.fromPath("${projectDir}/bin/filtervcf.py",  type: 'file', fo
 run_report = Channel.fromPath("${projectDir}/bin/report.py",  type: 'file', followLinks: false)
 pcgr_toml_config = params.pcgr_config ? Channel.value(file(params.pcgr_config)) : Channel.fromPath("${projectDir}/bin/pcgr.toml", type: 'file', followLinks: false) 
 combine_tables = Channel.fromPath("${projectDir}/bin/combine.py",  type: 'file', followLinks: false)
-pivot_table = Channel.fromPath("${projectDir}/bin/pivot.py",  type: 'file', followLinks: false)
+pivot_py = Channel.fromPath("${projectDir}/bin/pivot.py",  type: 'file', followLinks: false)
 
 if (!params.skip_filtering) {
 
@@ -248,7 +248,7 @@ if (report_mode == 'report') {
 
         input:
         file tiers from combined_tiers
-        each file("pivot.py") from pivot_table
+        each file("pivot.py") from pivot_py
 
         output:
         file("pivot.tsv")into pivot_tiers
