@@ -143,7 +143,6 @@ if (!params.skip_filtering) {
     ch_vcf_for_pcgr = ch_input
 }
 
-
 process pcgr {
     tag "$input_file"
     label 'process_high'
@@ -240,22 +239,22 @@ if (report_mode == 'report') {
         script:
         "python report.py $report"
     }
+
 } else {
 
-    process pivot_table{
+    process pivot_table {
         label 'process_low'
-        publishDir "${params.outdir}/MultiQC", mode: 'copy', pattern: "*.html"
+        publishDir "${params.outdir}", mode: 'copy'
 
         input:
         file tiers from combined_tiers
         each file("pivot.py") from pivot_py
 
         output:
-        file("pivot.tsv")into pivot_tiers
+        file("pivot.tsv") into pivot_tiers
 
         script:
-        "python pivot.py $tiers $params.pivot_columns"
-
+        "python pivot.py $tiers ${params.pivot_columns}"
     }
 
     process summary {
