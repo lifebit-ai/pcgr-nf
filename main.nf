@@ -98,6 +98,7 @@ getfilter = Channel.fromPath("${projectDir}/bin/filtervcf.py",  type: 'file', fo
 run_report = Channel.fromPath("${projectDir}/bin/report.py",  type: 'file', followLinks: false)
 pcgr_toml_config = params.pcgr_config ? Channel.value(file(params.pcgr_config)) : Channel.fromPath("${projectDir}/bin/pcgr.toml", type: 'file', followLinks: false) 
 combine_tables = Channel.fromPath("${projectDir}/bin/combine.py",  type: 'file', followLinks: false)
+pivot_table = Channel.fromPath("${projectDir}/bin/pivot.py",  type: 'file', followLinks: false)
 
 if (!params.skip_filtering) {
 
@@ -241,21 +242,38 @@ if (report_mode == 'report') {
     }
 } else {
 
+    process pivot_table{
+        label 'process_low'
+        publishDir "${params.outdir}/MultiQC", mode: 'copy', pattern: "*.html"
+
+        input:
+        file tiers from combined_tiers
+        each file("pivot.py") from pivot_table
+
+        output:
+        file("pivot.combined.tiers.tsv") into pivot_tiers
+
+        script:
+        "python pivot.py $tiers $params.pivot_columns"
+
+    }
+
     process summary {
         label 'process_low'
         publishDir "${params.outdir}/MultiQC", mode: 'copy', pattern: "*.html"
 
         input:
-        file report from out_pcgr.collect()
-        file tiers from combined_tiers
-        each file("report.py") from run_report
+        file table from pivot_tiers
 
         output:
-        file "*.html"
-        file report
+        file "multiqc_report.html"
 
         script:
-        "python report.py $report"
+        """
+        cp ${workflow.projectDir}/bin/* .
+        R -e "rmarkdown::render('report.Rmd', params = list(ptable='${table}'))"
+        mv report.html multiqc_report.html
+        """
     }
 
 }

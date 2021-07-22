@@ -1,0 +1,45 @@
+---
+output: 
+  html_document:
+    code_download: false
+    toc: true                  # table of content true
+    toc_depth: 3               # upto three depths of headings (specified by #, ## and ###)
+    toc_float: true
+    number_sections: true      # if you want number sections at each table header
+    theme: united              # many options for theme.
+    highlight: tango           # specifies the syntax highlighting style
+    css: 'style.css'
+params:
+  ptable: "pivot.combined.tiers.tsv"
+title: "`r paste0('PCGR-nf Report' , '') `"
+author: ""
+date: ""
+---
+
+<img src="logo.png" width=100 style="position:absolute;top:4px;bottom:4px;right:4px;" />
+
+```{r include = FALSE}
+knitr::opts_chunk$set(echo=FALSE)
+```
+
+```{r echo = FALSE}
+source("DTable.R")
+source("sanitise.R")
+suppressPackageStartupMessages({
+library(magrittr)
+library(DT)
+library(data.table)
+library(htmltools)
+library(stringr)
+library(dplyr)
+library(vcfR)
+library(kableExtra)
+   })
+```
+
+# Summary Table
+
+```{r}
+table   <- as.data.frame(data.table::fread(params$ptable))
+DTable(table)
+```
