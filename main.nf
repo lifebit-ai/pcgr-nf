@@ -251,7 +251,7 @@ if (report_mode == 'report') {
         each file("pivot.py") from pivot_table
 
         output:
-        file("pivot.combined.tiers.tsv") into pivot_tiers
+        file("pivot.tsv")into pivot_tiers
 
         script:
         "python pivot.py $tiers $params.pivot_columns"
