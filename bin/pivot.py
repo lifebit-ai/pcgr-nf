@@ -22,7 +22,6 @@ def __main__():
     print("Number of variants found:", len(df['GENOMIC_CHANGE'].unique()))
     
     for variant in df['GENOMIC_CHANGE'].unique():
-        print("adding....", variant)
         row = {'GENOMIC_CHANGE':variant}
         for column in columns:
             row[column] = ",".join(list(df[column][df['GENOMIC_CHANGE'] == variant].unique()))
