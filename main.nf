@@ -83,7 +83,7 @@ if (parameter_diff.size() > 1){
     }
 
 // Check for valid output mode options 
-def report_expected = ['table', 'report'] as Set
+def report_expected = ['summary', 'report'] as Set
 def report_parameter_diff = report_expected - params.report_mode
 if (parameter_diff.size() > 1){
         println "[Pipeline warning] Parameter $params.report_mode is not valid in the pipeline! Running with default 'report'\n"
@@ -156,7 +156,7 @@ process pcgr {
 
     output:
     file "*_pcgr.html" into out_pcgr
-    file "*tiers.tsv" into pcgr_tsv
+    file "result/*.tiers.tsv" into pcgr_tsv
     file "result/*"
 
     script:
@@ -208,18 +208,19 @@ process pcgr {
     """
 }
 
-process combine_tables {
+process combine_tiers {
     label "process_low"
+    publishDir "${params.outdir}", mode: 'copy'
     
     input:
     file tables from pcgr_tsv.collect()
     each file("combine.py") from combine_tables
 
     output:
-    file("combined.tsv") into combined_tiers
+    file("combined.tiers.tsv") into combined_tiers
 
     script:
-    "python combine.py $report"
+    "python combine.py $tables"
 }
 
 if (report_mode == 'report') {
@@ -239,13 +240,14 @@ if (report_mode == 'report') {
         "python report.py $report"
     }
 } else {
-    process report {
+
+    process summary {
         label 'process_low'
         publishDir "${params.outdir}/MultiQC", mode: 'copy', pattern: "*.html"
 
         input:
         file report from out_pcgr.collect()
-        file tiers into combined_tiers
+        file tiers from combined_tiers
         each file("report.py") from run_report
 
         output:
