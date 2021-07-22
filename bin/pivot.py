@@ -17,10 +17,10 @@ def __main__():
     columns = ['VCF_SAMPLE_ID'] + columns
     
     df = pd.read_csv(combined, delimiter='\t', header=0)
-    variants = df['GENOMIC_CHANGE'].unique()
-
     pivot = pd.DataFrame(columns=['GENOMIC_CHANGE']+columns)
-    for variant in variants:
+
+    for variant in df['GENOMIC_CHANGE'].unique():
+        print("adding....", variant)
         row = {'GENOMIC_CHANGE':variant}
         for column in columns:
             row[column] = ",".join(list(df[column][df['GENOMIC_CHANGE'] == variant].unique()))
