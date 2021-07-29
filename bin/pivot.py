@@ -6,6 +6,17 @@ import json
 import shutil
 import pandas as pd
 
+PCGR_COLUMNS = ['CHROM','POS','REF','ALT','GENOMIC_CHANGE','GENOME_VERSION','VCF_SAMPLE_ID',
+                'VARIANT_CLASS','SYMBOL','GENE_NAME','CCDS','CANONICAL','ENTREZ_ID','UNIPROT_ID',
+                'ENSEMBL_TRANSCRIPT_ID','ENSEMBL_GENE_I','REFSEQ_MRNA','ONCOGENE','TUMOR_SUPPRESSOR',
+                'ONCOGENE_EVIDENCE','TUMOR_SUPPRESSOR_EVIDENCE','CONSEQUENCE','PROTEIN_CHANGE','PROTEIN_DOMAIN',
+                'CODING_STATUS','EXONIC_STATUS','CDS_CHANGE','HGVSp','HGVSc','EFFECT_PREDICTIONS',
+                'MUTATION_HOTSPOT','MUTATION_HOTSPOT_TRANSCRIPT','MUTATION_HOTSPOT_CANCERTYPE','PUTATIVE_DRIVER_MUTATION',
+                'CHASMPLUS_DRIVER','CHASMPLUS_TTYPE','VEP_ALL_CSQ','DBSNPRSID','COSMIC_MUTATION_ID','TCGA_PANCANCER_COUNT',
+                'TCGA_FREQUENCY','ICGC_PCAWG_OCCURRENCE','CHEMBL_COMPOUND_ID','CHEMBL_COMPOUND_TERMS','SIMPLEREPEATS_HIT',
+                'WINMASKER_HIT','OPENTARGETS_RANK','CLINVAR','CLINVAR_CLNSIG','GLOBAL_AF_GNOMAD','GLOBAL_AF_1KG',
+                'CALL_CONFIDENCE','DP_TUMOR','AF_TUMOR','DP_CONTROL','AF_CONTROL','TIER','TIER_DESCRIPTION']
+
 def __main__():
 
     columns = sys.argv[2].split(',')
@@ -24,7 +35,10 @@ def __main__():
     for variant in df['GENOMIC_CHANGE'].unique():
         row = {'GENOMIC_CHANGE':variant}
         for column in columns:
-            row[column] = ",".join(list(df[column][df['GENOMIC_CHANGE'] == variant].unique()))
+            if column in PCGR_COLUMNS:
+                row[column] = ",".join(list(df[column][df['GENOMIC_CHANGE'] == variant].unique()))
+            else:
+                print("unrecognized column {}, skipping...".format(column))
         pivot = pivot.append(row,ignore_index=True)
 
     pivot.to_csv("pivot.tsv", sep='\t', index=False)
