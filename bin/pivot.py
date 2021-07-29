@@ -8,7 +8,7 @@ import pandas as pd
 
 def __main__():
 
-    columns = sys.argv[2:]
+    columns = sys.argv[2].split(',')
     combined = sys.argv[1]
     print("Input combined tiers file:", combined)
     print("Mandatory columns", ['GENOMIC_CHANGE', 'VCF_SAMPLE_ID'])
