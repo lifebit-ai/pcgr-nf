@@ -100,7 +100,7 @@ pcgr_toml_config = params.pcgr_config ? Channel.value(file(params.pcgr_config)) 
 combine_tables = Channel.fromPath("${projectDir}/bin/combine.py",  type: 'file', followLinks: false)
 pivot_py = Channel.fromPath("${projectDir}/bin/pivot.py",  type: 'file', followLinks: false)
 
-if (!params.skip_filtering) {
+if (params.filtering) {
 
     process check_fields {
         tag "$input_file"
