@@ -10,7 +10,8 @@ output:
     highlight: tango           # specifies the syntax highlighting style
     css: 'style.css'
 params:
-  ptable: "pivot.tsv"
+  ptable_gene: "pivot_gene.tsv"
+  ptable_variant: "pivot_variant.tsv"
 title: "`r paste0('PCGR-nf Report' , '') `"
 author: ""
 date: ""
@@ -36,9 +37,18 @@ library(kableExtra)
    })
 ```
 
-# By Variant Summary Table
+## Summary Tables
+
+### By Gene
 
 ```{r}
-table   <- as.data.frame(data.table::fread(params$ptable, sep="\t"))
-DTable(table)
+table_genes <- as.data.frame(data.table::fread(params$ptable_gene, sep="\t"))
+DTable(table_genes)
+```
+
+### By Variant
+
+```{r}
+table_variants <- as.data.frame(data.table::fread(params$ptable_variant, sep="\t"))
+DTable(table_variants)
 ```

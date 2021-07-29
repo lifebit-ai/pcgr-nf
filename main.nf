@@ -98,7 +98,8 @@ getfilter = Channel.fromPath("${projectDir}/bin/filtervcf.py",  type: 'file', fo
 run_report = Channel.fromPath("${projectDir}/bin/report.py",  type: 'file', followLinks: false)
 pcgr_toml_config = params.pcgr_config ? Channel.value(file(params.pcgr_config)) : Channel.fromPath("${projectDir}/bin/pcgr.toml", type: 'file', followLinks: false) 
 combine_tables = Channel.fromPath("${projectDir}/bin/combine.py",  type: 'file', followLinks: false)
-pivot_py = Channel.fromPath("${projectDir}/bin/pivot.py",  type: 'file', followLinks: false)
+pivot_gene_py = Channel.fromPath("${projectDir}/bin/pivot_gene.py",  type: 'file', followLinks: false)
+pivot_variant_py = Channel.fromPath("${projectDir}/bin/pivot_variant.py",  type: 'file', followLinks: false)
 
 if (params.filtering) {
 
@@ -217,7 +218,7 @@ process combine_tiers {
     each file("combine.py") from combine_tables
 
     output:
-    file("combined.tiers.tsv") into combined_tiers
+    file("combined.tiers.tsv") into combined_tiers_gene, combined_tiers_variant
 
     script:
     "python combine.py $tables"
@@ -242,19 +243,34 @@ if (report_mode == 'report') {
 
 } else {
 
-    process pivot_table {
+    process pivot_table_gene {
         label 'process_low'
         publishDir "${params.outdir}", mode: 'copy'
 
         input:
-        file tiers from combined_tiers
-        each file("pivot.py") from pivot_py
+        file tiers from combined_tiers_gene
+        each file("pivot_gene.py") from pivot_gene_py
 
         output:
-        file("pivot.tsv") into pivot_tiers
+        file("pivot_gene.tsv") into pivot_tiers_gene
 
         script:
-        "python pivot.py $tiers ${params.pivot_columns}"
+        "python pivot_gene.py $tiers"
+    }
+
+    process pivot_table_variant {
+        label 'process_low'
+        publishDir "${params.outdir}", mode: 'copy'
+
+        input:
+        file tiers from combined_tiers_variant
+        each file("pivot_variant.py") from pivot_variant_py
+
+        output:
+        file("pivot_variant.tsv") into pivot_tiers_variant
+
+        script:
+        "python pivot_variant.py $tiers ${params.pivot_columns_variants}"
     }
 
     process summary {
@@ -262,7 +278,8 @@ if (report_mode == 'report') {
         publishDir "${params.outdir}/MultiQC", mode: 'copy', pattern: "*.html"
 
         input:
-        file table from pivot_tiers
+        file gene_table from pivot_tiers_gene
+        file variant_table from pivot_tiers_variant
 
         output:
         file "multiqc_report.html"
@@ -270,7 +287,7 @@ if (report_mode == 'report') {
         script:
         """
         cp ${workflow.projectDir}/bin/* .
-        R -e "rmarkdown::render('report.Rmd', params = list(ptable='${table}'))"
+        R -e "rmarkdown::render('report.Rmd', params = list(ptable_gene='${gene_table}', ptable_variant='${variant_table}'))"
         mv report.html multiqc_report.html
         """
     }

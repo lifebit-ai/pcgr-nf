@@ -41,6 +41,6 @@ def __main__():
                 print("unrecognized column {}, skipping...".format(column))
         pivot = pivot.append(row,ignore_index=True)
 
-    pivot.to_csv("pivot.tsv", sep='\t', index=False)
+    pivot.to_csv("pivot_variant.tsv", sep='\t', index=False)
 
 if __name__=="__main__": __main__()
