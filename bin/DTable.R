@@ -20,6 +20,8 @@ DTable <- function(df = df,
   # > READING FILE INTO DF; DF TRANSFORMATIONS:
   # Read file
   
+  GENOMIC_CHANGE_col = which(colnames(df)=='GENOMIC_CHANGE')
+
   # > Customize interactive DT::datatable
   DT::datatable(df, 
                 rownames   = FALSE,
@@ -56,19 +58,26 @@ DTable <- function(df = df,
                     "$(this.api().table().footer()).css({'color': '#fff','font-family': 'sans-serif'});",
                     "$(this.api().table().container()).css({'color': '#fff','font-family': 'sans-serif', 'outline-color' : '#4e4b4c' });",
                     "$(this.api().table().node()).css({'color': '#fff','font-family': 'sans-serif'});",
-                    "}") )) %>% 
+                    "}"),
+                    
+                  # Shorten extra long entries in GENOMIC_CHANGE_col column to first 25 characters, show tooltip on hover
+                  columnDefs = list(list(
+                    targets = GENOMIC_CHANGE_col-1,
+                    render = JS(
+                      "function(data, type, row, meta) {",
+                      "return type === 'display' && data.length > 25 ?",
+                      "'<span title=\"' + data + '\">' + data.substr(0, 25) + '...</span>' : data;",
+                      "}"
+                    )
+                  ))
+
+
+                    )) %>% 
     
     # Change fontsize of cell values
     formatStyle(columns    = seq_along(colnames(df)), 
                 fontSize   = "85%",
-                fontFamily = "sans-serif")   %>%
-
-    formatSignif(
-      columns = unlist(lapply(df, is.numeric)),
-      digits = 2,
-      interval = 3,
-      mark = ",",
-      dec.mark = getOption("OutDec"))                 -> fancyDatatable
+                fontFamily = "sans-serif") -> fancyDatatable
 
   
   return(fancyDatatable)  

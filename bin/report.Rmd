@@ -10,7 +10,7 @@ output:
     highlight: tango           # specifies the syntax highlighting style
     css: 'style.css'
 params:
-  ptable: "pivot.combined.tiers.tsv"
+  ptable: "pivot.tsv"
 title: "`r paste0('PCGR-nf Report' , '') `"
 author: ""
 date: ""
@@ -32,14 +32,13 @@ library(data.table)
 library(htmltools)
 library(stringr)
 library(dplyr)
-library(vcfR)
 library(kableExtra)
    })
 ```
 
-# Summary Table
+# By Variant Summary Table
 
 ```{r}
-table   <- as.data.frame(data.table::fread(params$ptable))
+table   <- as.data.frame(data.table::fread(params$ptable, sep="\t"))
 DTable(table)
 ```
