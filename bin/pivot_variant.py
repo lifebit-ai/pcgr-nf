@@ -28,15 +28,15 @@ def __main__():
     columns = ['VCF_SAMPLE_ID'] + columns
     
     df = pd.read_csv(combined, delimiter='\t', header=0)
-    pivot = pd.DataFrame(columns=['GENOMIC_CHANGE']+columns)
+    pivot = pd.DataFrame()
 
     print("Number of variants found:", len(df['GENOMIC_CHANGE'].unique()))
     
     for variant in df['GENOMIC_CHANGE'].unique():
-        row = {'GENOMIC_CHANGE':variant}
+        row = {'GENOMIC CHANGE'.capitalize():variant}
         for column in columns:
             if column in PCGR_COLUMNS:
-                row[column] = ",".join(list(df[column][df['GENOMIC_CHANGE'] == variant].unique()))
+                row[column.replace('_', ' ').capitalize()] = ",".join(list(df[column][df['GENOMIC_CHANGE'] == variant].unique()))
             else:
                 print("unrecognized column {}, skipping...".format(column))
         pivot = pivot.append(row,ignore_index=True)
