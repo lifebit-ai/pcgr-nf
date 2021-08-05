@@ -9,7 +9,7 @@
 #' @return
 #' @export
 #'
-#' @examples
+#' @exampless
 DTable <- function(df = df,
                    nDigits_after_decimal = 1,
                    table_caption = ""  ,
@@ -20,7 +20,7 @@ DTable <- function(df = df,
   # > READING FILE INTO DF; DF TRANSFORMATIONS:
   # Read file
   
-  GENOMIC_CHANGE_col = which(colnames(df)=='GENOMIC_CHANGE')
+  GENOMIC_CHANGE_col = which(colnames(df)=='Genomic change')
 
   # > Customize interactive DT::datatable
   DT::datatable(df, 

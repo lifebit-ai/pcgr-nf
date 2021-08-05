@@ -270,7 +270,7 @@ if (report_mode == 'report') {
         file("pivot_variant.tsv") into pivot_tiers_variant
 
         script:
-        "python pivot_variant.py $tiers ${params.pivot_columns_variants}"
+        "python pivot_variant.py $tiers ${params.pivot_columns_variants} $task.cpus"
     }
 
     process summary {
