@@ -41,7 +41,7 @@ library(kableExtra)
 
 ```{r, warning=FALSE}
 figure_number  <- "Figure 1: "
-figure_caption <- "PCGR Tiers - Number of hits"
+figure_caption <- "PCGR Tiers - Number of variants"
 knitr::include_graphics(params$pplot_tiers, )
 htmltools::tags$figcaption( style = 'caption-side: bottom; text-align: center; font-size: 85%%; color: #71879d',
                             htmltools::em(figure_number),
