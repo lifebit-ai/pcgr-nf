@@ -23,7 +23,7 @@ date: ""
 knitr::opts_chunk$set(echo=FALSE)
 ```
 
-```{r echo = FALSE}
+```{r echo = FALSE, warning = FALSE}
 source("DTable.R")
 source("sanitise.R")
 suppressPackageStartupMessages({
@@ -41,14 +41,14 @@ library(kableExtra)
 
 ### By Gene
 
-```{r}
+```{r, warning=FALSE}
 table_genes <- as.data.frame(data.table::fread(params$ptable_gene, sep="\t"))
 DTable(table_genes)
 ```
 
 ### By Variant
 
-```{r}
+```{r, warning=FALSE}
 table_variants <- as.data.frame(data.table::fread(params$ptable_variant, sep="\t"))
 DTable(table_variants)
 ```
