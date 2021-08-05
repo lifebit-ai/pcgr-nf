@@ -255,7 +255,7 @@ if (report_mode == 'report') {
         file("pivot_gene.tsv") into pivot_tiers_gene
 
         script:
-        "python pivot_gene.py $tiers"
+        "python pivot_gene.py $tiers $task.cpus"
     }
 
     process pivot_table_variant {

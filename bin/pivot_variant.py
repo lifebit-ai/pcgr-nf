@@ -17,6 +17,8 @@ PCGR_COLUMNS = ['CHROM','POS','REF','ALT','GENOMIC_CHANGE','GENOME_VERSION','VCF
                 'TCGA_FREQUENCY','ICGC_PCAWG_OCCURRENCE','CHEMBL_COMPOUND_ID','CHEMBL_COMPOUND_TERMS','SIMPLEREPEATS_HIT',
                 'WINMASKER_HIT','OPENTARGETS_RANK','CLINVAR','CLINVAR_CLNSIG','GLOBAL_AF_GNOMAD','GLOBAL_AF_1KG',
                 'CALL_CONFIDENCE','DP_TUMOR','AF_TUMOR','DP_CONTROL','AF_CONTROL','TIER','TIER_DESCRIPTION']
+
+
 def process(group_name, df_group):
     """
     Worker function to process the dataframe.
@@ -25,6 +27,7 @@ def process(group_name, df_group):
     for column in df_group.columns:
         row[column.replace('_', ' ').capitalize()] = ",".join(list(df_group[column].unique()))
     return row
+
 
 def __main__():
 
@@ -63,5 +66,6 @@ def __main__():
 
     pivot = pd.DataFrame([f.get() for f in f_list]) 
     pivot.to_csv("pivot_variant.tsv", sep='\t', index=False)
+
 
 if __name__=="__main__": __main__()
