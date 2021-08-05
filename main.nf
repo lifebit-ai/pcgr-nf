@@ -100,6 +100,7 @@ pcgr_toml_config = params.pcgr_config ? Channel.value(file(params.pcgr_config)) 
 combine_tables = Channel.fromPath("${projectDir}/bin/combine.py",  type: 'file', followLinks: false)
 pivot_gene_py = Channel.fromPath("${projectDir}/bin/pivot_gene.py",  type: 'file', followLinks: false)
 pivot_variant_py = Channel.fromPath("${projectDir}/bin/pivot_variant.py",  type: 'file', followLinks: false)
+plot_tiers_py = Channel.fromPath("${projectDir}/bin/tiers_plot.py",  type: 'file', followLinks: false)
 
 if (params.filtering) {
 
@@ -218,7 +219,7 @@ process combine_tiers {
     each file("combine.py") from combine_tables
 
     output:
-    file("combined.tiers.tsv") into combined_tiers_gene, combined_tiers_variant
+    file("combined.tiers.tsv") into combined_tiers_gene, combined_tiers_variant, combined_tiers_plot
 
     script:
     "python combine.py $tables"
@@ -273,6 +274,21 @@ if (report_mode == 'report') {
         "python pivot_variant.py $tiers ${params.pivot_columns_variants} $task.cpus"
     }
 
+    process plot_tiers {
+        label 'process_low'
+        publishDir "${params.outdir}", mode: 'copy'
+
+        input:
+        file tiers from combined_tiers_plot
+        each file("tiers_plot.py") from plot_tiers_py
+
+        output:
+        file("tiers.png") into tiers_plot
+
+        script:
+        "python tiers_plot.py $tiers"
+    }
+
     process summary {
         label 'process_low'
         publishDir "${params.outdir}/MultiQC", mode: 'copy', pattern: "*.html"
@@ -280,6 +296,7 @@ if (report_mode == 'report') {
         input:
         file gene_table from pivot_tiers_gene
         file variant_table from pivot_tiers_variant
+        file plot_tiers from tiers_plot
 
         output:
         file "multiqc_report.html"
@@ -287,7 +304,7 @@ if (report_mode == 'report') {
         script:
         """
         cp ${workflow.projectDir}/bin/* .
-        R -e "rmarkdown::render('report.Rmd', params = list(ptable_gene='${gene_table}', ptable_variant='${variant_table}'))"
+        R -e "rmarkdown::render('report.Rmd', params = list(ptable_gene='${gene_table}', ptable_variant='${variant_table}', pplot_tiers='${plot_tiers}'))"
         mv report.html multiqc_report.html
         """
     }
