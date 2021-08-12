@@ -4,3 +4,4 @@ work/
 .nextflow/
 results/
 .DS_Store
+*.tsv

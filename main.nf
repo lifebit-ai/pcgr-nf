@@ -66,17 +66,11 @@ if (params.csv){
 
 Channel.fromPath(params.pcgr_data)
     .ifEmpty { exit 1, "Cannot find data bundle path : ${params.pcgr_data}" }
-    .into{ data_bundle ; data_bundle_2}
+    .set{ data_bundle }
 
 Channel.fromPath(params.pcgr_config)
     .ifEmpty { exit 1, "Cannot find config file : ${params.pcgr_config}" }
-    .into{ config ; config_2 }
-
-// Custum scripts
-projectDir = workflow.projectDir
-custum_pcgr = Channel.fromPath("${projectDir}/bin/modified_pcgr.py",  type: 'file', followLinks: false)
-combine_runs = Channel.fromPath("${projectDir}/bin/pcgr_combine_runs.py",  type: 'file', followLinks: false)
-run_report = Channel.fromPath("${projectDir}/bin/pcgr_report.py",  type: 'file', followLinks: false)
+    .set{ config }
 
 // Check for valid reference options 
 def human_reference_expected = ['grch37', 'grch38'] as Set
@@ -88,15 +82,27 @@ if (parameter_diff.size() > 1){
         ch_reference = Channel.value(params.pcgr_genome)
     }
 
+// Check for valid output mode options 
+def report_expected = ['summary', 'report'] as Set
+def report_parameter_diff = report_expected - params.report_mode
+if (parameter_diff.size() > 1){
+        println "[Pipeline warning] Parameter $params.report_mode is not valid in the pipeline! Running with default 'report'\n"
+        report_mode = 'report'
+    } else {
+        report_mode = params.report_mode
+    }
+
 // Custum scripts
 projectDir = workflow.projectDir
 getfilter = Channel.fromPath("${projectDir}/bin/filtervcf.py",  type: 'file', followLinks: false)
 run_report = Channel.fromPath("${projectDir}/bin/report.py",  type: 'file', followLinks: false)
 pcgr_toml_config = params.pcgr_config ? Channel.value(file(params.pcgr_config)) : Channel.fromPath("${projectDir}/bin/pcgr.toml", type: 'file', followLinks: false) 
-style_css = Channel.fromPath("${projectDir}/bin/style.css",  type: 'file', followLinks: false)
-logo_png = Channel.fromPath("${projectDir}/bin/logo.png",  type: 'file', followLinks: false)
+combine_tables = Channel.fromPath("${projectDir}/bin/combine.py",  type: 'file', followLinks: false)
+pivot_gene_py = Channel.fromPath("${projectDir}/bin/pivot_gene.py",  type: 'file', followLinks: false)
+pivot_variant_py = Channel.fromPath("${projectDir}/bin/pivot_variant.py",  type: 'file', followLinks: false)
+plot_tiers_py = Channel.fromPath("${projectDir}/bin/tiers_plot.py",  type: 'file', followLinks: false)
 
-if (!params.skip_filtering) {
+if (params.filtering) {
 
     process check_fields {
         tag "$input_file"
@@ -139,7 +145,6 @@ if (!params.skip_filtering) {
     ch_vcf_for_pcgr = ch_input
 }
 
-
 process pcgr {
     tag "$input_file"
     label 'process_high'
@@ -153,6 +158,7 @@ process pcgr {
 
     output:
     file "*_pcgr.html" into out_pcgr
+    file "result/*.tiers.tsv" into pcgr_tsv
     file "result/*"
 
     script:
@@ -204,21 +210,103 @@ process pcgr {
     """
 }
 
-process report {
-    label 'process_low'
-    publishDir "${params.outdir}/MultiQC", mode: 'copy'
-
+process combine_tiers {
+    label "process_low"
+    publishDir "${params.outdir}", mode: 'copy'
+    
     input:
-    file report from out_pcgr.collect()
-    each file("report.py") from run_report
-    file style from style_css
-    file logo from logo_png
+    file tables from pcgr_tsv.collect()
+    each file("combine.py") from combine_tables
 
     output:
-    file "*.html"
-    file report
+    file("combined.tiers.tsv") into (combined_tiers_gene, combined_tiers_variant, combined_tiers_plot)
 
     script:
-    "python report.py $style $logo $report"
+    "python combine.py $tables"
+}
+
+if (report_mode == 'report') {
+    process report {
+        label 'process_low'
+        publishDir "${params.outdir}/MultiQC", mode: 'copy', pattern: "*.html"
+
+        input:
+        file report from out_pcgr.collect()
+        each file("report.py") from run_report
+
+        output:
+        file "*.html"
+        file report
+
+        script:
+        "python report.py $report"
+    }
+
+} else {
+
+    process pivot_table_gene {
+        label 'process_low'
+        publishDir "${params.outdir}", mode: 'copy'
+
+        input:
+        file tiers from combined_tiers_gene
+        each file("pivot_gene.py") from pivot_gene_py
+
+        output:
+        file("pivot_gene.tsv") into pivot_tiers_gene
+
+        script:
+        "python pivot_gene.py $tiers $task.cpus"
+    }
+
+    process pivot_table_variant {
+        label 'process_low'
+        publishDir "${params.outdir}", mode: 'copy'
+
+        input:
+        file tiers from combined_tiers_variant
+        each file("pivot_variant.py") from pivot_variant_py
+
+        output:
+        file("pivot_variant.tsv") into pivot_tiers_variant
+
+        script:
+        "python pivot_variant.py $tiers ${params.pivot_columns_variants} $task.cpus"
+    }
+
+    process plot_tiers {
+        label 'process_low'
+        publishDir "${params.outdir}", mode: 'copy'
+
+        input:
+        file tiers from combined_tiers_plot
+        each file("tiers_plot.py") from plot_tiers_py
+
+        output:
+        file("tiers.png") into tiers_plot
+
+        script:
+        "python tiers_plot.py $tiers"
+    }
+
+    process summary {
+        label 'process_low'
+        publishDir "${params.outdir}/MultiQC", mode: 'copy', pattern: "*.html"
+
+        input:
+        file gene_table from pivot_tiers_gene
+        file variant_table from pivot_tiers_variant
+        file plot_tiers from tiers_plot
+
+        output:
+        file "multiqc_report.html"
+
+        script:
+        """
+        cp ${workflow.projectDir}/bin/* .
+        R -e "rmarkdown::render('report.Rmd', params = list(ptable_gene='${gene_table}', ptable_variant='${variant_table}', pplot_tiers='${plot_tiers}'))"
+        mv report.html multiqc_report.html
+        """
+    }
 
 }
