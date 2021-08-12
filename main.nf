@@ -64,18 +64,12 @@ if (params.csv){
         .set { ch_input }
 }
 
-if (params.metadata){
-    Channel
-        .fromPath(params.metadata)
-        .set { ch_metadata }
-} else {
-    Channel
-    .fromPath("${projectDir}/bin/metadata.tsv",  type: 'file', followLinks: false)
-    .set { ch_metadata }
-}
+// - Check optional metadata file 
+ch_metadata_optional = params.metadata ?  Channel.fromPath(params.metadata) : "null"
 
-ch_metadata.into{ ch_metadata_1 ; ch_metadata_2}
+ch_metadata_optional.into{ ch_metadata_1 ; ch_metadata_2}
 
+// Get pcgr parameters 
 Channel.fromPath(params.pcgr_data)
     .ifEmpty { exit 1, "Cannot find data bundle path : ${params.pcgr_data}" }
     .set{ data_bundle }
