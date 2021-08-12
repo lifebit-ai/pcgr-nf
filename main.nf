@@ -19,10 +19,12 @@ def helpMessage() {
     PCGR Options:
     --pcgr_config   Tool config file (path)
                     (default: $params.pcgr_config)
-    --pcgr_data     URL for reference data bundle
-                    (default: $params.pcgr_data)
     --pcgr_genome   Reference genome assembly
                     (default: $params.pcgr_genome)
+    --pcgr_data     URL for reference data bundle.
+                    Optional filed. If not provided, the appropriate data bundle is infered from --pcgr_genome. 
+                    (default: $params.pcgr_genome)
+
 
     Resource Options:
     --max_cpus      Maximum number of CPUs (int)
@@ -48,6 +50,8 @@ if (!params.vcf && !params.csv){ exit 1, "Essential parameters missing"}
 
 if (params.vcf && params.csv){ exit 1, "Multiple modes selected. Run single file mode (--vcf) or multiple file (--csv) independently"}
 
+if (!params.pcgr_data && !params.pcgr_genome){ exit 1, "Essential parameters missing. The reference genome needs to be defined (--pcg_genome) to properly load the pcgr database (--pcgr_data)"}
+
 if (params.vcf){
     Channel
         .fromPath(params.vcf)
@@ -64,9 +68,11 @@ if (params.csv){
         .set { ch_input }
 }
 
-Channel.fromPath(params.pcgr_data)
-    .ifEmpty { exit 1, "Cannot find data bundle path : ${params.pcgr_data}" }
-    .set{ data_bundle }
+if (params.pcgr_data){
+    Channel.fromPath(params.pcgr_data)
+        .ifEmpty { exit 1, "Cannot find data bundle path : ${params.pcgr_data}" }
+        .set{ data_bundle }
+}
 
 Channel.fromPath(params.pcgr_config)
     .ifEmpty { exit 1, "Cannot find config file : ${params.pcgr_config}" }
@@ -78,8 +84,18 @@ def parameter_diff = human_reference_expected - params.pcgr_genome
 if (parameter_diff.size() > 1){
         println "[Pipeline warning] Parameter $params.pcgr_genome is not valid in the pipeline! Running with default 'grch38'\n"
         ch_reference = Channel.value('grch38')
+        if (!params.pcgr_data){
+            data_bundle = Channel.fromPath('s3://fast-ngs/cloudos-public-data-ines/pcgr_data_grch38')
+        }
     } else {
         ch_reference = Channel.value(params.pcgr_genome)
+        if (!params.pcgr_data){
+            if (params.pcgr_genome == "grch38"){
+                data_bundle = Channel.fromPath('s3://fast-ngs/cloudos-public-data-ines/pcgr_data_grch38')
+            } else {
+                data_bundle = Channel.fromPath('s3://fast-ngs/cloudos-public-data-ines/pcgr_data_grch37')
+            }
+        }
     }
 
 // Check for valid output mode options 
