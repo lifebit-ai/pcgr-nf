@@ -29,7 +29,7 @@ def process(group_name, df_group):
             'CONSEQUENCE'.capitalize(): group_name[2]}
     for column in df_group.columns:
         if column not in ['SYMBOL', 'VARIANT_CLASS', 'CONSEQUENCE']:
-            row[column.replace('_', ' ').capitalize()] = ",".join([str(x) for x in list(df_group[column].unique())])
+            row[column.replace('_', ' ').capitalize()] = ";".join([str(x) for x in list(df_group[column].unique())])
     row['NUMBER OF VARIANTS'.capitalize()] = str(len(list(df_group['GENOMIC_CHANGE'].unique())))
     return row
 

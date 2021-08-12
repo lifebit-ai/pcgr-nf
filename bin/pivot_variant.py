@@ -25,7 +25,7 @@ def process(group_name, df_group):
     """
     row = {'GENOMIC CHANGE'.capitalize(): group_name}
     for column in df_group.columns:
-        row[column.replace('_', ' ').capitalize()] = ",".join(list(df_group[column].unique()))
+        row[column.replace('_', ' ').capitalize()] = ";".join(list(df_group[column].unique()))
     return row
 
 
