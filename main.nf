@@ -219,7 +219,7 @@ process combine_tiers {
     each file("combine.py") from combine_tables
 
     output:
-    file("combined.tiers.tsv") into combined_tiers_gene, combined_tiers_variant, combined_tiers_plot
+    file("combined.tiers.tsv") into (combined_tiers_gene, combined_tiers_variant, combined_tiers_plot)
 
     script:
     "python combine.py $tables"
