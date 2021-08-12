@@ -79,29 +79,21 @@ Channel.fromPath(params.pcgr_config)
     .set{ config }
 
 // Check for valid reference options 
-def human_reference_expected = ['grch37', 'grch38'] as Set
-def parameter_diff = human_reference_expected - params.pcgr_genome
-if (parameter_diff.size() > 1){
-        println "[Pipeline warning] Parameter $params.pcgr_genome is not valid in the pipeline! Running with default 'grch38'\n"
-        ch_reference = Channel.value('grch38')
-        if (!params.pcgr_data){
-            data_bundle = Channel.fromPath('s3://fast-ngs/cloudos-public-data-ines/pcgr_data_grch38')
-        }
-    } else {
-        ch_reference = Channel.value(params.pcgr_genome)
-        if (!params.pcgr_data){
-            if (params.pcgr_genome == "grch38"){
-                data_bundle = Channel.fromPath('s3://fast-ngs/cloudos-public-data-ines/pcgr_data_grch38')
-            } else {
-                data_bundle = Channel.fromPath('s3://fast-ngs/cloudos-public-data-ines/pcgr_data_grch37')
-            }
-        }
-    }
+if (!params.genomes.containsKey(params.pcgr_genome)){exit 1, "Error: Parameter $params.pcgr_genome is not valid in the pipeline. Available values: ${params.genomes.keySet().join(", ")}"}
+if (!params.pcgr_data){
+    pcgr_data = params.genomes[params.pcgr_genome].pcgr_data
+} else {
+    pcgr_data = params.pcgr_data
+}
+
+data_bundle = Channel.fromPath(pcgr_data)
+ch_reference = Channel.value(params.pcgr_genome)
+
 
 // Check for valid output mode options 
 def report_expected = ['summary', 'report'] as Set
 def report_parameter_diff = report_expected - params.report_mode
-if (parameter_diff.size() > 1){
+if (report_parameter_diff.size() > 1){
         println "[Pipeline warning] Parameter $params.report_mode is not valid in the pipeline! Running with default 'report'\n"
         report_mode = 'report'
     } else {
