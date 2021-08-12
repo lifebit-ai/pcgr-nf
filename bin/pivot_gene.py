@@ -36,9 +36,10 @@ def process(group_name, df_group):
 
 def __main__():
 
-    #columns = sys.argv[2].split(',')
     combined = sys.argv[1]
     max_cpus = int(sys.argv[2])
+    metadata = sys.argv[3]
+
     print("Input combined tiers file:", combined)
     print("Mandatory columns", ['GENE_NAME','SYMBOL', 'VARIANT_CLASS', 'CONSEQUENCE', 'VCF_SAMPLE_ID', 'GENOMIC_CHANGE'])
     print("Extra columns to include:")
@@ -61,6 +62,27 @@ def __main__():
         f_list.append(f)
 
     pivot = pd.DataFrame([f.get() for f in f_list]) 
+
+    if not os.stat(metadata).st_size==0:
+        metadata_dict = {}
+
+        with open(metadata, "r") as fh:
+            categories = f.readline().split('\t')[1:]
+            for cat in categories:
+                metadata_dict[cat] = []
+            for line in fh:
+                line = line.split('\t')
+                sample = line[0]
+                attributes = line[1:]
+                i = 0
+                for cat_attribute in attributes:
+                    metadata_cat = categories[i]
+                    if cat_attribute == 1:
+                        metadata_dict[metadata_cat].append(os.basename(sample))
+
+        print(metadata_dict)
+
+
     pivot.to_csv("pivot_gene.tsv", sep='\t', index=False)
 
 if __name__=="__main__": __main__()

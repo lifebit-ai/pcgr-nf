@@ -64,6 +64,18 @@ if (params.csv){
         .set { ch_input }
 }
 
+if (params.metadata){
+    Channel
+        .fromPath(params.metadata)
+        .set { ch_metadata }
+} else {
+    Channel
+    .fromPath("${projectDir}/bin/metadata.tsv",  type: 'file', followLinks: false)
+    .set { ch_metadata }
+}
+
+ch_metadata.into{ ch_metadata_1 ; ch_metadata_2}
+
 Channel.fromPath(params.pcgr_data)
     .ifEmpty { exit 1, "Cannot find data bundle path : ${params.pcgr_data}" }
     .set{ data_bundle }
@@ -250,13 +262,14 @@ if (report_mode == 'report') {
 
         input:
         file tiers from combined_tiers_gene
+        each metadata_file from ch_metadata_1
         each file("pivot_gene.py") from pivot_gene_py
 
         output:
         file("pivot_gene.tsv") into pivot_tiers_gene
 
         script:
-        "python pivot_gene.py $tiers $task.cpus"
+        "python pivot_gene.py $tiers $task.cpus $metadata_file"
     }
 
     process pivot_table_variant {
@@ -265,6 +278,7 @@ if (report_mode == 'report') {
 
         input:
         file tiers from combined_tiers_variant
+        each metadata_file from ch_metadata_2
         each file("pivot_variant.py") from pivot_variant_py
 
         output:
