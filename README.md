@@ -27,10 +27,11 @@ The typical command for running the pipeline is as follows:
     PCGR Options:
     --pcgr_config   Tool config file (path)
                     (default: s3://fast-ngs/cloudos-public-data-ines/pcgr.toml)
-    --pcgr_data     URL for reference data bundle
-                    (default: s3://fast-ngs/cloudos-public-data-ines/pcgr)
     --pcgr_genome   Reference genome assembly
                     (default: grch38)
+    --pcgr_data     URL for reference data bundle
+                    Optional filed. If not provided, the appropriate data bundle is infered from --pcgr_genome. 
+                    (default: false)
 
     Resource Options:
     --max_cpus      Maximum number of CPUs (int)
