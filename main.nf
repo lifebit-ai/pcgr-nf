@@ -125,7 +125,8 @@ getfilter = Channel.fromPath("${projectDir}/bin/filtervcf.py",  type: 'file', fo
 run_report = Channel.fromPath("${projectDir}/bin/report.py",  type: 'file', followLinks: false)
 pcgr_toml_config = params.pcgr_config ? Channel.value(file(params.pcgr_config)) : Channel.fromPath("${projectDir}/bin/pcgr.toml", type: 'file', followLinks: false) 
 combine_tables = Channel.fromPath("${projectDir}/bin/combine.py",  type: 'file', followLinks: false)
-pivot_gene_py = Channel.fromPath("${projectDir}/bin/pivot_gene.py",  type: 'file', followLinks: false)
+pivot_gene_simple_py = Channel.fromPath("${projectDir}/bin/pivot_gene_simple.py",  type: 'file', followLinks: false)
+pivot_gene_complete_py = Channel.fromPath("${projectDir}/bin/pivot_gene_complete.py",  type: 'file', followLinks: false)
 pivot_variant_py = Channel.fromPath("${projectDir}/bin/pivot_variant.py",  type: 'file', followLinks: false)
 plot_tiers_py = Channel.fromPath("${projectDir}/bin/tiers_plot.py",  type: 'file', followLinks: false)
 
@@ -246,7 +247,7 @@ process combine_tiers {
     each file("combine.py") from combine_tables
 
     output:
-    file("combined.tiers.tsv") into (combined_tiers_gene, combined_tiers_variant, combined_tiers_plot)
+    file("combined.tiers.tsv") into (combined_tiers_gene_simple, combined_tiers_gene_complete, combined_tiers_variant, combined_tiers_plot)
 
     script:
     "python combine.py $tables"
@@ -271,19 +272,34 @@ if (report_mode == 'report') {
 
 } else {
 
-    process pivot_table_gene {
+        process pivot_table_gene_simple {
         label 'process_low'
         publishDir "${params.outdir}", mode: 'copy'
 
         input:
-        file tiers from combined_tiers_gene
-        each file("pivot_gene.py") from pivot_gene_py
+        file tiers from combined_tiers_gene_simple
+        each file("pivot_gene_simple.py") from pivot_gene_simple_py
 
         output:
-        file("pivot_gene.tsv") into pivot_tiers_gene
+        file("pivot_gene_simple.tsv") into pivot_tiers_gene_simple
 
         script:
-        "python pivot_gene.py $tiers ${params.columns_genes} $task.cpus"
+        "python pivot_gene_simple.py $tiers ${params.columns_genes_simple} $task.cpus"
+    }
+
+    process pivot_table_gene_complete {
+        label 'process_low'
+        publishDir "${params.outdir}", mode: 'copy'
+
+        input:
+        file tiers from combined_tiers_gene_complete
+        each file("pivot_gene_complete.py") from pivot_gene_complete_py
+
+        output:
+        file("pivot_gene_complete.tsv") into pivot_tiers_gene_complete
+
+        script:
+        "python pivot_gene_complete.py $tiers ${params.columns_genes_complete} $task.cpus"
     }
 
     process pivot_table_variant {
@@ -321,7 +337,8 @@ if (report_mode == 'report') {
         publishDir "${params.outdir}/MultiQC", mode: 'copy', pattern: "*.html"
 
         input:
-        file gene_table from pivot_tiers_gene
+        file gene_table_simple from pivot_tiers_gene_simple
+        file gene_table_complete from pivot_tiers_gene_complete
         file variant_table from pivot_tiers_variant
         file plot_tiers from tiers_plot
 
@@ -331,7 +348,7 @@ if (report_mode == 'report') {
         script:
         """
         cp ${workflow.projectDir}/bin/* .
-        R -e "rmarkdown::render('report.Rmd', params = list(ptable_gene='${gene_table}', ptable_variant='${variant_table}', pplot_tiers='${plot_tiers}'))"
+        R -e "rmarkdown::render('report.Rmd', params = list(ptable_gene_simple='${gene_table_simple}', ptable_gene_complete='${gene_table_complete}', ptable_variant='${variant_table}', pplot_tiers='${plot_tiers}'))"
         mv report.html multiqc_report.html
         """
     }
