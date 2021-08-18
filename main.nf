@@ -283,7 +283,7 @@ if (report_mode == 'report') {
         file("pivot_gene.tsv") into pivot_tiers_gene
 
         script:
-        "python pivot_gene.py $tiers $task.cpus"
+        "python pivot_gene.py $tiers ${params.columns_genes} $task.cpus"
     }
 
     process pivot_table_variant {
@@ -298,7 +298,7 @@ if (report_mode == 'report') {
         file("pivot_variant.tsv") into pivot_tiers_variant
 
         script:
-        "python pivot_variant.py $tiers ${params.pivot_columns_variants} $task.cpus"
+        "python pivot_variant.py $tiers ${params.columns_variants} $task.cpus"
     }
 
     process plot_tiers {

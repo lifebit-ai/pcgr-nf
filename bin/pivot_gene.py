@@ -25,10 +25,11 @@ def process(group_name, df_group):
     Worker function to process the dataframe.
     """
     row = {'SYMBOL'.capitalize(): group_name[0],
-            'VARIANT CLASS'.capitalize(): group_name[1],
-            'CONSEQUENCE'.capitalize(): group_name[2]}
+            'GENE_NAME'.capitalize(): group_name[1],
+            'VARIANT CLASS'.capitalize(): group_name[2],
+            'CONSEQUENCE'.capitalize(): group_name[3]}
     for column in df_group.columns:
-        if column not in ['SYMBOL', 'VARIANT_CLASS', 'CONSEQUENCE']:
+        if column not in ['SYMBOL', 'GENE_NAME', 'VARIANT_CLASS', 'CONSEQUENCE']:
             row[column.replace('_', ' ').capitalize()] = ";".join([str(x) for x in list(df_group[column].unique())])
     row['NUMBER OF VARIANTS'.capitalize()] = str(len(list(df_group['GENOMIC_CHANGE'].unique())))
     return row
@@ -36,22 +37,29 @@ def process(group_name, df_group):
 
 def __main__():
 
-    #columns = sys.argv[2].split(',')
     combined = sys.argv[1]
-    max_cpus = int(sys.argv[2])
+    columns = sys.argv[2]
+    if columns == 'false':
+        columns = []
+    else:
+        columns = sys.argv[2].split(',')
+    max_cpus = int(sys.argv[3])
+
+    mandatory_columns = ['GENE_NAME','SYMBOL', 'VARIANT_CLASS', 'CONSEQUENCE', 'ONCOGENE', 'TUMOR_SUPPRESSOR', 'VCF_SAMPLE_ID', 'GENOMIC_CHANGE']
+
     print("Input combined tiers file:", combined)
-    print("Mandatory columns", ['GENE_NAME','SYMBOL', 'VARIANT_CLASS', 'CONSEQUENCE', 'VCF_SAMPLE_ID', 'GENOMIC_CHANGE'])
-    print("Extra columns to include:")
-    
-    all_columns = ['GENE_NAME','SYMBOL', 'VARIANT_CLASS', 'CONSEQUENCE', 'VCF_SAMPLE_ID', 'GENOMIC_CHANGE']
-    
+    print("Mandatory columns", mandatory_columns)
+    print("Extra columns to include:", columns)
+
+    all_columns = list(set(mandatory_columns + columns))
+        
     reader = pd.read_csv(combined, sep='\t', header=0, chunksize=1000, usecols=all_columns)
     chunk_arr = []
     for df in reader:
         chunk_arr.append(df)
     df = pd.concat(chunk_arr, axis=0)
 
-    group_by = df.groupby(['SYMBOL', 'VARIANT_CLASS', 'CONSEQUENCE'])
+    group_by = df.groupby(['SYMBOL','GENE_NAME','VARIANT_CLASS','CONSEQUENCE'])
     print("Number of genes found:", len(group_by))
 
     pool = mp.Pool(processes=max_cpus)
