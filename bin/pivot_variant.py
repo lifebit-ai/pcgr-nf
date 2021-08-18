@@ -25,6 +25,7 @@ def process(group_name, df_group):
     """
     row = {'GENOMIC CHANGE'.capitalize(): group_name}
     for column in df_group.columns:
+        df_group[column] = df_group[column].apply(str)
         row[column.replace('_', ' ').capitalize()] = ";".join(list(df_group[column].unique()))
     return row
 
@@ -35,10 +36,10 @@ def __main__():
     combined = sys.argv[1]
     max_cpus = int(sys.argv[3])
     print("Input combined tiers file: ", combined)
-    print("Mandatory columns: ", ['GENOMIC_CHANGE', 'VCF_SAMPLE_ID'])
+    print("Mandatory columns: ", ['GENOMIC_CHANGE', 'VCF_SAMPLE_ID', 'SYMBOL', 'PROTEIN_CHANGE'])
     print("Extra columns to include: ", columns)
     
-    final_columns = ['VCF_SAMPLE_ID']
+    final_columns = ['VCF_SAMPLE_ID', 'SYMBOL', 'PROTEIN_CHANGE']
 
     for column in columns:
         if column not in PCGR_COLUMNS:
