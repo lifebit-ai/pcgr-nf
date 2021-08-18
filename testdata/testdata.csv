@@ -1,0 +1,3 @@
+vcf
+s3://lifebit-featured-datasets/pipelines/pcgr/testdata/test_1/test.vcf
+s3://lifebit-featured-datasets/pipelines/pcgr/testdata/test_1/two.vcf

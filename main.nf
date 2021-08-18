@@ -43,6 +43,25 @@ if (params.help) {
     exit 0
 }
 
+
+// Header log info
+def summary = [:]
+summary['Max Resources']    = "$params.max_memory memory, $params.max_cpus cpus, $params.max_time time per job"
+if (workflow.containerEngine) summary['Container'] = "$workflow.containerEngine - $workflow.container"
+summary['Output dir']       = params.outdir
+summary['Launch dir']       = workflow.launchDir
+summary['Working dir']      = workflow.workDir
+summary['Script dir']       = workflow.projectDir
+summary['User']             = workflow.userName
+summary['Config Profile']   = workflow.profile
+summary['Additional config']= params.config
+summary['Input file']       = params.vcf ? params.vcf : params.csv
+summary['Genome']           = params.pcgr_genome 
+if (params.pcgr_data) summary['Custom PCGR data'] = params.pcgr_data
+summary['PCGR config']      = params.pcgr_config
+log.info summary.collect { k,v -> "${k.padRight(20)}: $v" }.join("\n")
+log.info "-\033[2m--------------------------------------------------\033[0m-"
+
 // Define Channels from input
 
 // - Check input mode 
