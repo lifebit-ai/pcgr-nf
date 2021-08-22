@@ -76,17 +76,13 @@ If you create a config file make sure to also upload it to a CloudOS datasets.
 
 ## 4. Run the pipeline on CloudOS
 
-Once you have all input files and config prepare, you can submit the job.
+Once you have all input files and config prepared, you can submit the job.
 
 1. From the pipelines page select the PCGR pipeline (see step 1 of this guide).
-2. On the parameter setting page add a parameter `config`, and using a dataset viewer (blue data icon on the right) select the config file you created for your analysis. If you wish to use the pipeline's test config file, just paste the value `conf/test.config` for the `config` parameter value. This will use the pipeline in-built config that uses test data.
-<br>
-<br>
-If you decided not to use the config file, you can also provide all the parameters here individually. You can provide the VCF or CSV file for corresponding parameters by using the dataset viewer too. You could also paste in the full S3 path to your file to the argument value filed if you already have it without going to the dataset viewer.
+2. On the parameter setting page add a parameter `config`, and using a dataset viewer (blue data icon on the right) select the config file you created for your analysis. If you wish to use the pipeline's test config file, just paste the value `conf/test.config` for the `config` parameter value. This will use the pipeline in-built config that uses test data. If you decided not to use the config file, you can also provide all the parameters here individually. You can provide the VCF or CSV file for corresponding parameters by using the dataset viewer too. You could also paste in the full S3 path to your file to the argument value filed if you already have it without going to the dataset viewer.
 3. Once config file or all other parameters are set, you can procced to job configuration by pressing the "Next" button in the upper right corner.
 4. On the configuration page you can configure the instance type to be used for the job (Select instance size according to resources specified by `max_cpus` and `max_memory`, or 16 CPUs and 30 Gb if you use the defaults). Additionally you can add a maximum cost limit to your job (job will terminate if it reaches the limit), or make the job resumable to be able to use the nextflow [`-resume`](https://www.nextflow.io/docs/latest/cli.html?highlight=resume) option later on.
 5. After the configuration is set, you can submit the job by pressing the "Run job" button in the upper right corner. the submitted job will take 3-5 minutes to initialize, and then the page will show you the pipeline progress until it is completed.
-<br>
 <br>
 
 
