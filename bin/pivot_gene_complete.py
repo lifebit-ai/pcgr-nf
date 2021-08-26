@@ -25,13 +25,17 @@ def process(group_name, df_group):
     Worker function to process the dataframe.
     """
     row = {'SYMBOL'.capitalize(): group_name[0],
-            'GENE_NAME'.capitalize(): group_name[1],
-            'VARIANT CLASS'.capitalize(): group_name[2],
-            'CONSEQUENCE'.capitalize(): group_name[3]}
+        'GENE NAME'.capitalize(): group_name[1]}
+    row['ONCOGENE'.capitalize()] = ";".join([str(x) for x in list(df_group['ONCOGENE'].unique())])
+    row['TUMOR_SUPPRESSOR'.replace('_', ' ').capitalize()] = ";".join([str(x) for x in list(df_group['TUMOR_SUPPRESSOR'].unique())])
+    
     for column in df_group.columns:
-        if column not in ['SYMBOL', 'GENE_NAME', 'VARIANT_CLASS', 'CONSEQUENCE']:
+        if column not in ['SYMBOL', 'GENE_NAME', 'VARIANT_CLASS', 'CONSEQUENCE',  'ONCOGENE', 'TUMOR_SUPPRESSOR']:
             row[column.replace('_', ' ').capitalize()] = ";".join([str(x) for x in list(df_group[column].unique())])
+    
     row['NUMBER OF VARIANTS'.capitalize()] = str(len(list(df_group['GENOMIC_CHANGE'].unique())))
+    row['VARIANT CLASS'.capitalize()] = group_name[2]
+    row['CONSEQUENCE'.capitalize()] =  group_name[3]
     return row
 
 
@@ -45,7 +49,7 @@ def __main__():
         columns = sys.argv[2].split(',')
     max_cpus = int(sys.argv[3])
 
-    mandatory_columns = ['GENE_NAME','SYMBOL', 'VARIANT_CLASS', 'CONSEQUENCE', 'ONCOGENE', 'TUMOR_SUPPRESSOR', 'VCF_SAMPLE_ID', 'GENOMIC_CHANGE']
+    mandatory_columns = ['GENE_NAME','SYMBOL', 'ONCOGENE', 'TUMOR_SUPPRESSOR', 'VARIANT_CLASS', 'CONSEQUENCE', 'VCF_SAMPLE_ID', 'GENOMIC_CHANGE']
 
     print("Input combined tiers file:", combined)
     print("Mandatory columns", mandatory_columns)
