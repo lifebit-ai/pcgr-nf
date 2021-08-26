@@ -30,10 +30,16 @@ def process(group_name, df_group, metadata):
     row['TUMOR_SUPPRESSOR'.replace('_', ' ').capitalize()] = ";".join([str(x) for x in list(df_group['TUMOR_SUPPRESSOR'].unique())])
 
     for column in df_group.columns:
-        if column not in ['SYMBOL', 'GENE_NAME', 'GENOMIC_CHANGE', 'ONCOGENE', 'TUMOR_SUPPRESSOR']:
+        if column not in ['SYMBOL', 'GENE_NAME', 'GENOMIC_CHANGE', 'ONCOGENE', 'TUMOR_SUPPRESSOR', 'TIER']:
             row[column.replace('_', ' ').capitalize()] = ";".join([str(x) for x in list(df_group[column].unique())])
     
-    row['NUMBER OF VARIANTS'.capitalize()] = str(len(list(df_group['GENOMIC_CHANGE'].unique())))
+    row['NUMBER OF VARIANTS'.capitalize()] = str(len(list(df_group['GENOMIC_CHANGE'])))
+
+    row["Tier 1"] = len(df_group['TIER'][df_group['TIER']=="TIER 1"])
+    row["Tier 2"] = len(df_group['TIER'][df_group['TIER']=="TIER 2"])
+    row["Tier 3"] = len(df_group['TIER'][df_group['TIER']=="TIER 3"])
+    row["Tier 4"] = len(df_group['TIER'][df_group['TIER']=="TIER 4"])
+    row["Noncoding"] = len(df_group['TIER'][df_group['TIER']=="NONCODING"])
     
     if not metadata.empty:
         summed_values = pd.DataFrame(columns=sorted(metadata.columns))
@@ -61,7 +67,7 @@ def __main__():
     max_cpus = int(sys.argv[3])
 
     # columns for report
-    mandatory_columns = ['GENE_NAME','SYMBOL', 'ONCOGENE','TUMOR_SUPPRESSOR', 'VCF_SAMPLE_ID', 'GENOMIC_CHANGE']
+    mandatory_columns = ['GENE_NAME','SYMBOL', 'ONCOGENE','TUMOR_SUPPRESSOR', 'VCF_SAMPLE_ID', 'GENOMIC_CHANGE', 'TIER']
 
     print("Input combined tiers file:", combined)
     print("Mandatory columns", mandatory_columns)
