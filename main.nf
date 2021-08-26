@@ -308,6 +308,7 @@ if (report_mode == 'report') {
 
         input:
         file tiers from combined_tiers_variant
+        each metadata_file from ch_metadata_2
         each file("pivot_variant.py") from pivot_variant_py
 
         output:
