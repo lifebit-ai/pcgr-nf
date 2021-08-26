@@ -25,16 +25,24 @@ def process(group_name, df_group, metadata):
     """
     row = {'SYMBOL'.capitalize(): group_name[0],
             'GENE NAME'.capitalize(): group_name[1]}
+
+    row['ONCOGENE'.capitalize()] = ";".join([str(x) for x in list(df_group['ONCOGENE'].unique())])
+    row['TUMOR_SUPPRESSOR'.replace('_', ' ').capitalize()] = ";".join([str(x) for x in list(df_group['TUMOR_SUPPRESSOR'].unique())])
+
     for column in df_group.columns:
-        if column not in ['SYMBOL', 'GENE_NAME', 'GENOMIC_CHANGE']:
+        if column not in ['SYMBOL', 'GENE_NAME', 'GENOMIC_CHANGE', 'ONCOGENE', 'TUMOR_SUPPRESSOR']:
             row[column.replace('_', ' ').capitalize()] = ";".join([str(x) for x in list(df_group[column].unique())])
+    
     row['NUMBER OF VARIANTS'.capitalize()] = str(len(list(df_group['GENOMIC_CHANGE'].unique())))
+    
     if not metadata.empty:
         summed_values = pd.DataFrame(columns=sorted(metadata.columns))
+        total = metadata.sum().sum()
         for sample in row['VCF SAMPLE ID'.capitalize()].split(';'):
             summed_values = summed_values.append(metadata.loc[sample])
         for col in summed_values.columns:
             row[col.replace('_', ' ').capitalize()] = int(sum(summed_values[col]))
+            row[col.replace('_', ' ').replace('Number',"Percentage").capitalize()] = sum(summed_values[col])/total * 100
     return row
 
 
@@ -53,27 +61,25 @@ def __main__():
     max_cpus = int(sys.argv[3])
 
     # columns for report
-    mandatory_columns = ['GENE_NAME','SYMBOL', 'VCF_SAMPLE_ID', 'GENOMIC_CHANGE']
-    metadata_col = [col for col in combined_header if col.startswith('METADATA_')]
+    mandatory_columns = ['GENE_NAME','SYMBOL', 'ONCOGENE','TUMOR_SUPPRESSOR', 'VCF_SAMPLE_ID', 'GENOMIC_CHANGE']
 
     print("Input combined tiers file:", combined)
     print("Mandatory columns", mandatory_columns)
     print("Extra columns to include:", columns)
-    print("Metadata columns: ", metadata_col)
+    print("Metadata columns: METADATA_HISTOLOGICAL_TYPE")
 
-    # create dataframe with value counts per metadata 
-    metadata_col = ['VCF_SAMPLE_ID'] + metadata_col
+    # create dataframe with value counts per metadata - histological type
+    metadata_col = ['VCF_SAMPLE_ID', 'METADATA_HISTOLOGICAL_TYPE']
     metadata_df = pd.read_csv(combined, sep='\t', header=0, usecols=metadata_col).drop_duplicates()
 
     group_metadata_df = metadata_df.groupby(['VCF_SAMPLE_ID'])
     metadata_rows = []
     for group_name, df_group in group_metadata_df:
         row = {'VCF SAMPLE ID'.capitalize(): group_name}
-        for col in df_group.columns:
-            _count_dict = json.loads((df_group[col].value_counts().to_json()))
-            for k,v in _count_dict.items():
+        _count_dict = json.loads((df_group['METADATA_HISTOLOGICAL_TYPE'].value_counts().to_json()))
+        for k,v in _count_dict.items():
                 if k != group_name:
-                    row['Number_'+k] = v 
+                    row['Number_'+k] = v
         metadata_rows.append(row)
     count_metadata_df = pd.DataFrame([f for f in metadata_rows]).fillna(0).set_index('VCF SAMPLE ID'.capitalize()) 
 
