@@ -25,6 +25,12 @@ def helpMessage() {
                     Optional filed. If not provided, the appropriate data bundle is infered from --pcgr_genome. 
                     (default: $params.pcgr_genome)
 
+    Optional paramenters:
+    --metadata      `CSV` file with metadata information.
+                    Available only when using --csv mode
+                    Should be a `*.csv` file with the first column called `vcf` and the path to each file, one per line,
+                    matching the file in --csv, followed by metadata, one per column, for each sample. 
+                    See example in `testdata/metadata.csv`.
 
     Resource Options:
     --max_cpus      Maximum number of CPUs (int)
@@ -70,6 +76,8 @@ if (!params.vcf && !params.csv){ exit 1, "Essential parameters missing"}
 if (params.vcf && params.csv){ exit 1, "Multiple modes selected. Run single file mode (--vcf) or multiple file (--csv) independently"}
 
 if (!params.pcgr_data && !params.pcgr_genome){ exit 1, "Essential parameters missing. The reference genome needs to be defined (--pcg_genome) to properly load the pcgr database (--pcgr_data)"}
+
+if (params.metadata && !params.csv){ exit 1, "Metadata can only be used with multiple file mode (--csv)"}
 
 if (params.vcf){
     Channel
@@ -118,6 +126,9 @@ if (report_parameter_diff.size() > 1){
     } else {
         report_mode = params.report_mode
     }
+
+// Check optional metadata file
+ch_optional_metadata = params.metadata ? Channel.fromPath(params.metadata) : "null"
 
 // Custum scripts
 projectDir = workflow.projectDir
@@ -244,13 +255,14 @@ process combine_tiers {
     
     input:
     file tables from pcgr_tsv.collect()
+    each file(metadata) from ch_optional_metadata
     each file("combine.py") from combine_tables
 
     output:
     file("combined.tiers.tsv") into (combined_tiers_gene_simple, combined_tiers_gene_complete, combined_tiers_variant, combined_tiers_plot)
 
     script:
-    "python combine.py $tables"
+    "python combine.py $metadata $tables"
 }
 
 if (report_mode == 'report') {
@@ -308,7 +320,6 @@ if (report_mode == 'report') {
 
         input:
         file tiers from combined_tiers_variant
-        each metadata_file from ch_metadata_2
         each file("pivot_variant.py") from pivot_variant_py
 
         output:
