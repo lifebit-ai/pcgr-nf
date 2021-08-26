@@ -19,10 +19,12 @@ def helpMessage() {
     PCGR Options:
     --pcgr_config   Tool config file (path)
                     (default: $params.pcgr_config)
-    --pcgr_data     URL for reference data bundle
-                    (default: $params.pcgr_data)
     --pcgr_genome   Reference genome assembly
                     (default: $params.pcgr_genome)
+    --pcgr_data     URL for reference data bundle.
+                    Optional filed. If not provided, the appropriate data bundle is infered from --pcgr_genome. 
+                    (default: $params.pcgr_genome)
+
 
     Resource Options:
     --max_cpus      Maximum number of CPUs (int)
@@ -41,12 +43,33 @@ if (params.help) {
     exit 0
 }
 
+
+// Header log info
+def summary = [:]
+summary['Max Resources']    = "$params.max_memory memory, $params.max_cpus cpus, $params.max_time time per job"
+if (workflow.containerEngine) summary['Container'] = "$workflow.containerEngine - $workflow.container"
+summary['Output dir']       = params.outdir
+summary['Launch dir']       = workflow.launchDir
+summary['Working dir']      = workflow.workDir
+summary['Script dir']       = workflow.projectDir
+summary['User']             = workflow.userName
+summary['Config Profile']   = workflow.profile
+summary['Additional config']= params.config
+summary['Input file']       = params.vcf ? params.vcf : params.csv
+summary['Genome']           = params.pcgr_genome 
+if (params.pcgr_data) summary['Custom PCGR data'] = params.pcgr_data
+summary['PCGR config']      = params.pcgr_config
+log.info summary.collect { k,v -> "${k.padRight(20)}: $v" }.join("\n")
+log.info "-\033[2m--------------------------------------------------\033[0m-"
+
 // Define Channels from input
 
 // - Check input mode 
 if (!params.vcf && !params.csv){ exit 1, "Essential parameters missing"}
 
 if (params.vcf && params.csv){ exit 1, "Multiple modes selected. Run single file mode (--vcf) or multiple file (--csv) independently"}
+
+if (!params.pcgr_data && !params.pcgr_genome){ exit 1, "Essential parameters missing. The reference genome needs to be defined (--pcg_genome) to properly load the pcgr database (--pcgr_data)"}
 
 if (params.vcf){
     Channel
@@ -64,34 +87,32 @@ if (params.csv){
         .set { ch_input }
 }
 
-// - Check optional metadata file 
-ch_metadata_optional = params.metadata ?  Channel.fromPath(params.metadata) : "null"
-
-ch_metadata_optional.into{ ch_metadata_1 ; ch_metadata_2}
-
-// Get pcgr parameters 
-Channel.fromPath(params.pcgr_data)
-    .ifEmpty { exit 1, "Cannot find data bundle path : ${params.pcgr_data}" }
-    .set{ data_bundle }
+if (params.pcgr_data){
+    Channel.fromPath(params.pcgr_data)
+        .ifEmpty { exit 1, "Cannot find data bundle path : ${params.pcgr_data}" }
+        .set{ data_bundle }
+}
 
 Channel.fromPath(params.pcgr_config)
     .ifEmpty { exit 1, "Cannot find config file : ${params.pcgr_config}" }
     .set{ config }
 
 // Check for valid reference options 
-def human_reference_expected = ['grch37', 'grch38'] as Set
-def parameter_diff = human_reference_expected - params.pcgr_genome
-if (parameter_diff.size() > 1){
-        println "[Pipeline warning] Parameter $params.pcgr_genome is not valid in the pipeline! Running with default 'grch38'\n"
-        ch_reference = Channel.value('grch38')
-    } else {
-        ch_reference = Channel.value(params.pcgr_genome)
-    }
+if (!params.genomes.containsKey(params.pcgr_genome)){exit 1, "Error: Parameter $params.pcgr_genome is not valid in the pipeline. Available values: ${params.genomes.keySet().join(", ")}"}
+if (!params.pcgr_data){
+    pcgr_data = params.genomes[params.pcgr_genome].pcgr_data
+} else {
+    pcgr_data = params.pcgr_data
+}
+
+data_bundle = Channel.fromPath(pcgr_data)
+ch_reference = Channel.value(params.pcgr_genome)
+
 
 // Check for valid output mode options 
 def report_expected = ['summary', 'report'] as Set
 def report_parameter_diff = report_expected - params.report_mode
-if (parameter_diff.size() > 1){
+if (report_parameter_diff.size() > 1){
         println "[Pipeline warning] Parameter $params.report_mode is not valid in the pipeline! Running with default 'report'\n"
         report_mode = 'report'
     } else {
@@ -104,7 +125,8 @@ getfilter = Channel.fromPath("${projectDir}/bin/filtervcf.py",  type: 'file', fo
 run_report = Channel.fromPath("${projectDir}/bin/report.py",  type: 'file', followLinks: false)
 pcgr_toml_config = params.pcgr_config ? Channel.value(file(params.pcgr_config)) : Channel.fromPath("${projectDir}/bin/pcgr.toml", type: 'file', followLinks: false) 
 combine_tables = Channel.fromPath("${projectDir}/bin/combine.py",  type: 'file', followLinks: false)
-pivot_gene_py = Channel.fromPath("${projectDir}/bin/pivot_gene.py",  type: 'file', followLinks: false)
+pivot_gene_simple_py = Channel.fromPath("${projectDir}/bin/pivot_gene_simple.py",  type: 'file', followLinks: false)
+pivot_gene_complete_py = Channel.fromPath("${projectDir}/bin/pivot_gene_complete.py",  type: 'file', followLinks: false)
 pivot_variant_py = Channel.fromPath("${projectDir}/bin/pivot_variant.py",  type: 'file', followLinks: false)
 plot_tiers_py = Channel.fromPath("${projectDir}/bin/tiers_plot.py",  type: 'file', followLinks: false)
 
@@ -225,7 +247,7 @@ process combine_tiers {
     each file("combine.py") from combine_tables
 
     output:
-    file("combined.tiers.tsv") into (combined_tiers_gene, combined_tiers_variant, combined_tiers_plot)
+    file("combined.tiers.tsv") into (combined_tiers_gene_simple, combined_tiers_gene_complete, combined_tiers_variant, combined_tiers_plot)
 
     script:
     "python combine.py $tables"
@@ -250,20 +272,34 @@ if (report_mode == 'report') {
 
 } else {
 
-    process pivot_table_gene {
+        process pivot_table_gene_simple {
         label 'process_low'
         publishDir "${params.outdir}", mode: 'copy'
 
         input:
-        file tiers from combined_tiers_gene
-        each metadata_file from ch_metadata_1
-        each file("pivot_gene.py") from pivot_gene_py
+        file tiers from combined_tiers_gene_simple
+        each file("pivot_gene_simple.py") from pivot_gene_simple_py
 
         output:
-        file("pivot_gene.tsv") into pivot_tiers_gene
+        file("pivot_gene_simple.tsv") into pivot_tiers_gene_simple
 
         script:
-        "python pivot_gene.py $tiers $task.cpus $metadata_file"
+        "python pivot_gene_simple.py $tiers ${params.columns_genes_simple} $task.cpus"
+    }
+
+    process pivot_table_gene_complete {
+        label 'process_low'
+        publishDir "${params.outdir}", mode: 'copy'
+
+        input:
+        file tiers from combined_tiers_gene_complete
+        each file("pivot_gene_complete.py") from pivot_gene_complete_py
+
+        output:
+        file("pivot_gene_complete.tsv") into pivot_tiers_gene_complete
+
+        script:
+        "python pivot_gene_complete.py $tiers ${params.columns_genes_complete} $task.cpus"
     }
 
     process pivot_table_variant {
@@ -279,7 +315,7 @@ if (report_mode == 'report') {
         file("pivot_variant.tsv") into pivot_tiers_variant
 
         script:
-        "python pivot_variant.py $tiers ${params.pivot_columns_variants} $task.cpus"
+        "python pivot_variant.py $tiers ${params.columns_variants} $task.cpus"
     }
 
     process plot_tiers {
@@ -302,7 +338,8 @@ if (report_mode == 'report') {
         publishDir "${params.outdir}/MultiQC", mode: 'copy', pattern: "*.html"
 
         input:
-        file gene_table from pivot_tiers_gene
+        file gene_table_simple from pivot_tiers_gene_simple
+        file gene_table_complete from pivot_tiers_gene_complete
         file variant_table from pivot_tiers_variant
         file plot_tiers from tiers_plot
 
@@ -312,7 +349,7 @@ if (report_mode == 'report') {
         script:
         """
         cp ${workflow.projectDir}/bin/* .
-        R -e "rmarkdown::render('report.Rmd', params = list(ptable_gene='${gene_table}', ptable_variant='${variant_table}', pplot_tiers='${plot_tiers}'))"
+        R -e "rmarkdown::render('report.Rmd', params = list(ptable_gene_simple='${gene_table_simple}', ptable_gene_complete='${gene_table_complete}', ptable_variant='${variant_table}', pplot_tiers='${plot_tiers}'))"
         mv report.html multiqc_report.html
         """
     }

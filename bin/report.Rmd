@@ -10,7 +10,8 @@ output:
     highlight: tango           # specifies the syntax highlighting style
     css: 'style.css'
 params:
-  ptable_gene: "pivot_gene.tsv"
+  ptable_gene_simple: "pivot_gene_simple.tsv"
+  ptable_gene_complete: "pivot_gene_complete.tsv"
   ptable_variant: "pivot_variant.tsv"
   pplot_tiers: "tiers.png"
 title: "`r paste0('PCGR-nf Report' , '') `"
@@ -37,6 +38,7 @@ library(dplyr)
 library(kableExtra)
    })
 ```
+
 ## Summary Plots
 
 ```{r, warning=FALSE}
@@ -52,8 +54,17 @@ htmltools::tags$figcaption( style = 'caption-side: bottom; text-align: center; f
 
 ### By Gene
 
+#### Gene
+
 ```{r, warning=FALSE}
-table_genes <- as.data.frame(data.table::fread(params$ptable_gene, sep="\t"))
+table_genes <- as.data.frame(data.table::fread(params$ptable_gene_simple, sep="\t"))
+DTable(table_genes)
+```
+
+#### Gene, Variant Class and Consequence
+
+```{r, warning=FALSE}
+table_genes <- as.data.frame(data.table::fread(params$ptable_gene_complete, sep="\t"))
 DTable(table_genes)
 ```
 
