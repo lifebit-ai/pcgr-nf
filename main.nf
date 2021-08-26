@@ -30,6 +30,7 @@ def helpMessage() {
                     Available only when using --csv mode
                     Should be a `*.csv` file with the first column called `vcf` and the path to each file, one per line,
                     matching the file in --csv, followed by metadata, one per column, for each sample. 
+                    The column `histological_type` is required to be present.
                     See example in `testdata/metadata.csv`.
 
     Resource Options:
