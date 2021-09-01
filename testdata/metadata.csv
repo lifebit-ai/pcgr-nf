@@ -1,0 +1,3 @@
+vcf,sample_id,histological_type,sex,library_name
+test.vcf,G1,Germinoma,female,IGCT-1
+two.vcf,G2,Mixed,male,IGCT-3

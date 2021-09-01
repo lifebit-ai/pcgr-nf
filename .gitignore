@@ -5,3 +5,4 @@ work/
 results/
 .DS_Store
 *.tsv
+*.csv

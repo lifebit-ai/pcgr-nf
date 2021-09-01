@@ -28,7 +28,7 @@ While you will be able to provide a single VCF to the pipeline simply by using t
 
 To provide more than one VCF to be analysed pipeline, it's required to use a CSV file that provides paths to all vcf files. You can create this file locally and upload it to CloudOS as any other file.
 
-The CSV file used for the test run - [testdata/testdata.csv](https://github.com/lifebit-ai/pcgr-nf/blob/upd-test-and-docs/testdata/testdata.csv)
+The CSV file used for the test run - [testdata/testdata.csv](https://github.com/lifebit-ai/pcgr-nf/blob/dev/testdata/testdata.csv)
 
 An example csv file:
 `my_vcf_list.csv`:
@@ -43,6 +43,25 @@ s3://my-bucket/full/path/to/my_vcf_3.vcf
 You can then provide this CSV file to the pipeline with a `--csv my_vcf_list.csv` option.
 
 To get the S3 paths of files uploaded to CloudOS you can click the *"Text file"* blue icon on the very right from the file name in Data & Results page. This will copy the S3 path to your clipboard, and you will be able to paste it to the CSV file you are creating. For the files located on an external S3 bucket you should use their full URIs as shown in example CSV above.
+
+### 2.3 Providing metadata for multiple VCFs
+
+If you use the `--csv` option to pass a list of VCF files to pcgr-nf, you can also pass metadata for each of the samples in your CSV file using `--metadata metadata.csv`. This is an optional parameter but it's only usable is the `--csv` option is used.
+
+The metadata file used for the test run - [testdata/metadata.csv](https://github.com/lifebit-ai/pcgr-nf/blob/dev/testdata/metadata.csv)
+
+An example metadata file:
+`metadata.csv`:
+
+``` bash
+vcf,sample_id,histological_type,sex,library_name
+my_vcf_1.vcf,G1,Germinoma,female,IGCT-1
+my_vcf_2.vcf,G2,Mixed,male,IGCT-3
+my_vcf_3.vcf,G2,Mixed,female,IGCT-3
+```
+
+The `vcf` and the `histological_type` columns are **mandatory** and must be included in your metadata file. The `vcf` column must match the filenames in the one used with the `--csv` option.
+
 <br>
 <br>
 
