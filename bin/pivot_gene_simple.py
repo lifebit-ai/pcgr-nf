@@ -19,6 +19,10 @@ PCGR_COLUMNS = ['CHROM','POS','REF','ALT','GENOMIC_CHANGE','GENOME_VERSION','VCF
                 'CALL_CONFIDENCE','DP_TUMOR','AF_TUMOR','DP_CONTROL','AF_CONTROL','TIER','TIER_DESCRIPTION']
 
 
+def str2bool(v):
+    return v.lower() in ("yes", "true", "t", "1")
+
+
 def process(group_name, df_group, metadata):
     """
     Worker function to process the dataframe.
@@ -65,6 +69,7 @@ def __main__():
         columns = sys.argv[2].split(',')
 
     max_cpus = int(sys.argv[3])
+    has_metadata = str2bool(sys.argv[4])
 
     # columns for report
     mandatory_columns = ['GENE_NAME','SYMBOL', 'ONCOGENE','TUMOR_SUPPRESSOR', 'VCF_SAMPLE_ID', 'GENOMIC_CHANGE', 'TIER']
@@ -72,22 +77,26 @@ def __main__():
     print("Input combined tiers file:", combined)
     print("Mandatory columns", mandatory_columns)
     print("Extra columns to include:", columns)
-    print("Metadata columns: METADATA_HISTOLOGICAL_TYPE")
+    if has_metadata:
+        print("Metadata columns: METADATA_HISTOLOGICAL_TYPE")
 
-    # create dataframe with value counts per metadata - histological type
-    metadata_col = ['VCF_SAMPLE_ID', 'METADATA_HISTOLOGICAL_TYPE']
-    metadata_df = pd.read_csv(combined, sep='\t', header=0, usecols=metadata_col).drop_duplicates()
+        # create dataframe with value counts per metadata - histological type
+        metadata_col = ['VCF_SAMPLE_ID', 'METADATA_HISTOLOGICAL_TYPE']
+        metadata_df = pd.read_csv(combined, sep='\t', header=0, usecols=metadata_col).drop_duplicates()
 
-    group_metadata_df = metadata_df.groupby(['VCF_SAMPLE_ID'])
-    metadata_rows = []
-    for group_name, df_group in group_metadata_df:
-        row = {'VCF SAMPLE ID'.capitalize(): group_name}
-        _count_dict = json.loads((df_group['METADATA_HISTOLOGICAL_TYPE'].value_counts().to_json()))
-        for k,v in _count_dict.items():
+        group_metadata_df = metadata_df.groupby(['VCF_SAMPLE_ID'])
+        metadata_rows = []
+        for group_name, df_group in group_metadata_df:
+            row = {'VCF SAMPLE ID'.capitalize(): group_name}
+            _count_dict = json.loads((df_group['METADATA_HISTOLOGICAL_TYPE'].value_counts().to_json()))
+            for k,v in _count_dict.items():
                 if k != group_name:
                     row['Number_'+k] = v
-        metadata_rows.append(row)
-    count_metadata_df = pd.DataFrame([f for f in metadata_rows]).fillna(0).set_index('VCF SAMPLE ID'.capitalize()) 
+            metadata_rows.append(row)
+        count_metadata_df = pd.DataFrame([f for f in metadata_rows]).fillna(0).set_index('VCF SAMPLE ID'.capitalize()) 
+    else:
+        count_metadata_df = pd.DataFrame()
+
 
     # parse and process pcgr combined file
     all_columns = list(set(mandatory_columns + columns))
@@ -108,7 +117,6 @@ def __main__():
         f_list.append(f)
 
     pivot = pd.DataFrame([f.get() for f in f_list]) 
-
 
     pivot.to_csv("pivot_gene_simple.tsv", sep='\t', index=False)
 

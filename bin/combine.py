@@ -23,7 +23,7 @@ def __main__():
 
         df = pd.concat(li, axis=0, ignore_index=True)
     
-    if metadata != "null":
+    if metadata != "PASS":
         # process metadata
         metadata_df = pd.read_csv(metadata, index_col=None, header=0, delimiter=",")
         metadata_df = metadata_df.add_prefix("metadata_")

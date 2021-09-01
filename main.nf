@@ -263,7 +263,8 @@ process combine_tiers {
     file("combined.tiers.tsv") into (combined_tiers_gene_simple, combined_tiers_gene_complete, combined_tiers_variant, combined_tiers_plot)
 
     script:
-    "python combine.py $metadata $tables"
+    optional_metadata = params.metadata ? "$metadata": "PASS"
+    "python combine.py $optional_metadata $tables"
 }
 
 if (report_mode == 'report') {
@@ -297,7 +298,8 @@ if (report_mode == 'report') {
         file("pivot_gene_simple.tsv") into pivot_tiers_gene_simple
 
         script:
-        "python pivot_gene_simple.py $tiers ${params.columns_genes_simple} $task.cpus"
+        metadata_opt = params.metadata ? "true": "false"
+        "python pivot_gene_simple.py $tiers ${params.columns_genes_simple} $task.cpus $metadata_opt"
     }
 
     process pivot_table_gene_complete {
