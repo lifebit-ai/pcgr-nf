@@ -22,7 +22,8 @@ def helpMessage() {
     --pcgr_genome   Reference genome assembly
                     (default: $params.pcgr_genome)
     --pcgr_data     URL for reference data bundle.
-                    Optional filed. If not provided, the appropriate data bundle is infered from --pcgr_genome. 
+                    Optional file. Can be passed as a path to the folder or to a tarball (compressed or not).
+                    If not provided, the appropriate data bundle is infered from --pcgr_genome. 
                     (default: $params.pcgr_genome)
 
     Optional paramenters:
@@ -185,6 +186,39 @@ if (params.filtering) {
     ch_vcf_for_pcgr = ch_input
 }
 
+process check_data_bundle{
+    label 'process_high'
+
+    input:
+    path(data) from data_bundle
+
+    output:
+    file("data_bundle/") into data_bundle_checked
+
+    script:
+    """
+    # Check if data is compressed
+    if [[ -d $data ]]; then
+        echo "$data is a directory"
+        mv $data data_bundle
+    elif [[ -f $data ]]; then
+        echo "$data is a file"
+        data_bundle_name=`echo $data | cut -d'.' --complement -f2-`
+        echo \$data_bundle_name
+
+        { # try compressed tar file
+            tar -xvzf $data
+        } || { # catch - not in gzip format
+            tar -xvf $data
+        }
+
+        mv \$data_bundle_name data_bundle
+    fi
+    """
+
+
+}
+
 process pcgr {
     tag "$input_file"
     label 'process_high'
@@ -192,7 +226,7 @@ process pcgr {
 
     input:
     file input_file from ch_vcf_for_pcgr
-    each path(data) from data_bundle
+    each path(data) from data_bundle_checked
     each file(config_toml) from pcgr_toml_config
     each reference from ch_reference
 
