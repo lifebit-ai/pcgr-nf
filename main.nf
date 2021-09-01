@@ -186,7 +186,7 @@ if (params.filtering) {
     ch_vcf_for_pcgr = ch_input
 }
 
-process check_data_bundle{
+process check_data_bundle {
     label 'process_high'
 
     input:
@@ -207,7 +207,7 @@ process check_data_bundle{
         echo \$data_bundle_name
 
         { # try compressed tar file
-            tar -xvzf $data
+            tar -I pigz -xvzf $data
         } || { # catch - not in gzip format
             tar -xvf $data
         }
@@ -215,8 +215,6 @@ process check_data_bundle{
         mv \$data_bundle_name data_bundle
     fi
     """
-
-
 }
 
 process pcgr {
