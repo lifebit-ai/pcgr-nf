@@ -207,7 +207,7 @@ process check_data_bundle {
         echo \$data_bundle_name
 
         { # try compressed tar file
-            tar -I pigz -xvzf $data
+            tar -xvzf $data
         } || { # catch - not in gzip format
             tar -xvf $data
         }
