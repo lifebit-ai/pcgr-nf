@@ -149,6 +149,8 @@ if (params.filtering) {
         tag "$input_file"
         label 'process_low'
 
+        publishDir "${params.outdir}/process-logs/${task.process}/${input_file}/", pattern: "command-logs-*", mode: 'copy'
+
         input:
         file input_file from ch_input
         each file("filtervcf.py") from getfilter
@@ -156,14 +158,22 @@ if (params.filtering) {
         output:
         file input_file into ch_input_2
         file("filter") into filterstr
+        file("command-logs-*") optional true
 
         script:
-        "python filtervcf.py $input_file $params.min_qd $params.max_fs $params.max_sor $params.min_mq"
+        """
+        python filtervcf.py $input_file $params.min_qd $params.max_fs $params.max_sor $params.min_mq
+
+        # save .command.* logs
+        ${params.savescript}
+        """
     }
 
     process vcffilter {
         tag "$input_file"
         label 'process_low'
+
+        publishDir "${params.outdir}/process-logs/${task.process}/${input_file}/", pattern: "command-logs-*", mode: 'copy'
 
         input:
         file input_file from ch_input_2
@@ -171,6 +181,7 @@ if (params.filtering) {
 
         output:
         file "*filtered.vcf" into ch_vcf_for_pcgr
+        file("command-logs-*") optional true
 
         script:
         """
@@ -180,6 +191,9 @@ if (params.filtering) {
         else
             vcffilter -s -f \$(cat $filter) $input_file > ${input_file.baseName}_filtered.vcf
         fi
+
+        # save .command.* logs
+        ${params.savescript}
         """
     }
 }else{
@@ -189,14 +203,11 @@ if (params.filtering) {
 process check_data_bundle {
     label 'process_high'
 
-    publishDir "${params.outdir}/process-logs/${task.process}/", pattern: "command-logs-*", mode: 'copy'
-
     input:
     path(data) from data_bundle
 
     output:
     file("*") into data_bundle_checked
-    file("command-logs-*") optional true
 
     script:
     """
@@ -216,16 +227,15 @@ process check_data_bundle {
         }
         mv \$data_bundle_name data_bundle
     fi
-
-    # save .command.* logs
-    ${params.savescript}
     """
 }
 
 process pcgr {
     tag "$input_file"
     label 'process_high'
+
     publishDir "${params.outdir}", mode: 'copy'
+    publishDir "${params.outdir}/process-logs/${task.process}/${input_file}/", pattern: "command-logs-*", mode: 'copy'
 
     input:
     file input_file from ch_vcf_for_pcgr
@@ -237,6 +247,7 @@ process pcgr {
     file "*_pcgr.html" into out_pcgr
     file "result/*.tiers.tsv" into pcgr_tsv
     file "result/*"
+    file("command-logs-*") optional true
 
     script:
     """
@@ -284,12 +295,17 @@ process pcgr {
 
     # Save RMarkdown report
     cp result/*${reference}.html ${input_file.baseName}_pcgr.html
+
+    # save .command.* logs
+    ${params.tagsavescript}
     """
 }
 
 process combine_tiers {
     label "process_low"
+
     publishDir "${params.outdir}", mode: 'copy'
+    publishDir "${params.outdir}/process-logs/${task.process}/", pattern: "command-logs-*", mode: 'copy'
     
     input:
     file tables from pcgr_tsv.collect()
@@ -298,16 +314,24 @@ process combine_tiers {
 
     output:
     file("combined.tiers.tsv") into (combined_tiers_gene_simple, combined_tiers_gene_complete, combined_tiers_variant, combined_tiers_plot)
+    file("command-logs-*") optional true
 
     script:
     optional_metadata = params.metadata ? "$metadata": "PASS"
-    "python combine.py $optional_metadata $tables"
+    """
+    python combine.py $optional_metadata $tables
+
+    # save .command.* logs
+    ${params.savescript}
+    """
 }
 
 if (report_mode == 'report') {
     process report {
         label 'process_low'
+
         publishDir "${params.outdir}/MultiQC", mode: 'copy', pattern: "*.html"
+        publishDir "${params.outdir}/process-logs/${task.process}/", pattern: "command-logs-*", mode: 'copy'
 
         input:
         file report from out_pcgr.collect()
@@ -316,16 +340,24 @@ if (report_mode == 'report') {
         output:
         file "*.html"
         file report
+        file("command-logs-*") optional true
 
         script:
-        "python report.py $report"
+        """
+        python report.py $report
+
+        # save .command.* logs
+        ${params.savescript}
+        """
     }
 
 } else {
 
         process pivot_table_gene_simple {
         label 'process_low'
+
         publishDir "${params.outdir}", mode: 'copy'
+        publishDir "${params.outdir}/process-logs/${task.process}/", pattern: "command-logs-*", mode: 'copy'
 
         input:
         file tiers from combined_tiers_gene_simple
@@ -333,15 +365,23 @@ if (report_mode == 'report') {
 
         output:
         file("pivot_gene_simple.tsv") into pivot_tiers_gene_simple
+        file("command-logs-*") optional true
 
         script:
         metadata_opt = params.metadata ? "true": "false"
-        "python pivot_gene_simple.py $tiers ${params.columns_genes_simple} $task.cpus $metadata_opt"
+        """
+        python pivot_gene_simple.py $tiers ${params.columns_genes_simple} $task.cpus $metadata_opt
+        
+        # save .command.* logs
+        ${params.savescript}
+        """
     }
 
     process pivot_table_gene_complete {
         label 'process_low'
+
         publishDir "${params.outdir}", mode: 'copy'
+        publishDir "${params.outdir}/process-logs/${task.process}/", pattern: "command-logs-*", mode: 'copy'
 
         input:
         file tiers from combined_tiers_gene_complete
@@ -349,14 +389,22 @@ if (report_mode == 'report') {
 
         output:
         file("pivot_gene_complete.tsv") into pivot_tiers_gene_complete
+        file("command-logs-*") optional true
 
         script:
-        "python pivot_gene_complete.py $tiers ${params.columns_genes_complete} $task.cpus"
+        """
+        python pivot_gene_complete.py $tiers ${params.columns_genes_complete} $task.cpus
+
+        # save .command.* logs
+        ${params.savescript}
+        """
     }
 
     process pivot_table_variant {
         label 'process_low'
+
         publishDir "${params.outdir}", mode: 'copy'
+        publishDir "${params.outdir}/process-logs/${task.process}/", pattern: "command-logs-*", mode: 'copy'
 
         input:
         file tiers from combined_tiers_variant
@@ -364,14 +412,22 @@ if (report_mode == 'report') {
 
         output:
         file("pivot_variant.tsv") into pivot_tiers_variant
+        file("command-logs-*") optional true
 
         script:
-        "python pivot_variant.py $tiers ${params.columns_variants} $task.cpus"
+        """
+        python pivot_variant.py $tiers ${params.columns_variants} $task.cpus
+
+        # save .command.* logs
+        ${params.savescript}
+        """
     }
 
     process plot_tiers {
         label 'process_low'
+
         publishDir "${params.outdir}", mode: 'copy'
+        publishDir "${params.outdir}/process-logs/${task.process}/", pattern: "command-logs-*", mode: 'copy'
 
         input:
         file tiers from combined_tiers_plot
@@ -379,14 +435,22 @@ if (report_mode == 'report') {
 
         output:
         file("tiers.png") into tiers_plot
+        file("command-logs-*") optional true
 
         script:
-        "python tiers_plot.py $tiers"
+        """
+        python tiers_plot.py $tiers
+
+        # save .command.* logs
+        ${params.savescript}
+        """
     }
 
     process summary {
         label 'process_low'
+
         publishDir "${params.outdir}/MultiQC", mode: 'copy', pattern: "*.html"
+        publishDir "${params.outdir}/process-logs/${task.process}/", pattern: "command-logs-*", mode: 'copy'
 
         input:
         file gene_table_simple from pivot_tiers_gene_simple
@@ -396,12 +460,16 @@ if (report_mode == 'report') {
 
         output:
         file "multiqc_report.html"
+        file("command-logs-*") optional true
 
         script:
         """
         cp ${workflow.projectDir}/bin/* .
         R -e "rmarkdown::render('report.Rmd', params = list(ptable_gene_simple='${gene_table_simple}', ptable_gene_complete='${gene_table_complete}', ptable_variant='${variant_table}', pplot_tiers='${plot_tiers}'))"
         mv report.html multiqc_report.html
+
+        # save .command.* logs
+        ${params.savescript}
         """
     }
 
