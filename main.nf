@@ -308,7 +308,7 @@ process pcgr {
     cp result/*${reference}.html ${input_file.baseName}_pcgr.html
 
     # save .command.* logs
-    ${params.tagsavescript}
+    ${params.savescript}
     """
 }
 
