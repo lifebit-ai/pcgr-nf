@@ -190,7 +190,6 @@ process check_data_bundle {
     label 'process_high'
 
     publishDir "${params.outdir}/process-logs/${task.process}/", pattern: "command-logs-*", mode: 'copy'
-    publishDir "${params.outdir}/process-logs/${task.process}/", pattern: "work-*", mode: 'copy'
 
     input:
     path(data) from data_bundle
