@@ -204,7 +204,6 @@ process check_data_bundle {
     label 'process_high'
 
     publishDir "${params.outdir}/process-logs/${task.process}/", pattern: "command-logs-*", mode: 'copy'
-    publishDir "${params.outdir}/process-logs/${task.process}/", pattern: "work-tree-*", mode: 'copy'
 
     input:
     path(data) from data_bundle
@@ -212,7 +211,6 @@ process check_data_bundle {
     output:
     file("*") into data_bundle_checked
     file("command-logs-*") optional true
-    file("work-tree-*") optional true
 
     script:
     """
@@ -235,9 +233,6 @@ process check_data_bundle {
 
     # save .command.* logs
     ${params.savescript}
-
-    # save wordir tree structure
-    ${params.treescript}
     """
 }
 
