@@ -245,7 +245,7 @@ process pcgr {
 
     input:
     file input_file from ch_vcf_for_pcgr
-    each path(data) from data_bundle_checked.last()
+    each path(data) from data_bundle_checked
     each file(config_toml) from pcgr_toml_config
     each reference from ch_reference
 
@@ -297,7 +297,7 @@ process pcgr {
 
     # Run PCGR
     mkdir result
-    pcgr.py --tumor_site ${params.pcgr_tumor_site} --input_vcf $input_file --pcgr_dir $data --output_dir result/ --genome_assembly $reference --conf new_config.toml --sample_id $input_file.baseName --no_vcf_validate --no-docker
+    pcgr.py --tumor_site ${params.pcgr_tumor_site} --input_vcf $input_file --pcgr_dir ${data[1]} --output_dir result/ --genome_assembly $reference --conf new_config.toml --sample_id $input_file.baseName --no_vcf_validate --no-docker
 
     # Save RMarkdown report
     cp result/*${reference}.html ${input_file.baseName}_pcgr.html
