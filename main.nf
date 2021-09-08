@@ -189,11 +189,15 @@ if (params.filtering) {
 process check_data_bundle {
     label 'process_high'
 
+    publishDir "${params.outdir}/process-logs/${task.process}/", pattern: "command-logs-*", mode: 'copy'
+    publishDir "${params.outdir}/process-logs/${task.process}/", pattern: "work-*", mode: 'copy'
+
     input:
     path(data) from data_bundle
 
     output:
-    file("data_bundle/") into data_bundle_checked
+    file("*") into data_bundle_checked
+    file("command-logs-*") optional true
 
     script:
     """
@@ -211,9 +215,11 @@ process check_data_bundle {
         } || { # catch - not in gzip format
             tar -xvf $data
         }
-
         mv \$data_bundle_name data_bundle
     fi
+
+    # save .command.* logs
+    ${params.savescript}
     """
 }
 
