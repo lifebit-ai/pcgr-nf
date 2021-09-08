@@ -203,11 +203,16 @@ if (params.filtering) {
 process check_data_bundle {
     label 'process_high'
 
+    publishDir "${params.outdir}/process-logs/${task.process}/", pattern: "command-logs-*", mode: 'copy'
+    publishDir "${params.outdir}/process-logs/${task.process}/", pattern: "work-tree-*", mode: 'copy'
+
     input:
     path(data) from data_bundle
 
     output:
     file("*") into data_bundle_checked
+    file("command-logs-*") optional true
+    file("work-tree-*") optional true
 
     script:
     """
@@ -227,6 +232,12 @@ process check_data_bundle {
         }
         mv \$data_bundle_name data_bundle
     fi
+
+    # save .command.* logs
+    ${params.savescript}
+
+    # save wordir tree structure
+    ${params.treescript}
     """
 }
 
@@ -239,7 +250,7 @@ process pcgr {
 
     input:
     file input_file from ch_vcf_for_pcgr
-    each path(data) from data_bundle_checked
+    each path(data) from data_bundle_checked.last()
     each file(config_toml) from pcgr_toml_config
     each reference from ch_reference
 
