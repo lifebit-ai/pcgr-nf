@@ -23,12 +23,15 @@ def __main__():
 
     print("Input combined tiers file: ", combined)
     
-    reader = pd.read_csv(combined, sep='\t', header=0, chunksize=1000, usecols=['TIER'])
+    reader = pd.read_csv(combined, sep='\t', header=0, chunksize=1000, usecols=['TIER', 'GENOMIC_CHANGE'])
 
     chunk_arr = []
     for df in reader:
         chunk_arr.append(df)
     df = pd.concat(chunk_arr, axis=0)
+
+    # remove duplicated variants
+    df = df.drop_duplicates()
 
     counts = {}
     tiers = df['TIER'].value_counts()
