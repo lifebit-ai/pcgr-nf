@@ -45,14 +45,19 @@ def process(group_name, df_group, metadata):
     row["Tier 4"] = len(df_group['TIER'][df_group['TIER']=="TIER 4"])
     row["Noncoding"] = len(df_group['TIER'][df_group['TIER']=="NONCODING"])
     
-    if not metadata.empty:
+    if not metadata.empty:        
         summed_values = pd.DataFrame(columns=sorted(metadata.columns))
         for sample in row['VCF SAMPLE ID'.capitalize()].split(';'):
             summed_values = summed_values.append(metadata.loc[sample])
         for col in summed_values.columns:
             total_category = metadata[col].sum()
-            row[col.replace('_', ' ').capitalize()] = int(sum(summed_values[col]))
-            row[col.replace('_', ' ').replace('Number',"Percentage").capitalize()] = sum(summed_values[col])/total_category * 100
+            # skip rows with only noncoding variants
+            if int(row["Noncoding"]) == int(row['NUMBER OF VARIANTS'.capitalize()]):
+                row[col.replace('_', ' ').capitalize()] = 0
+                row[col.replace('_', ' ').replace('Number',"Percentage").capitalize()] = 0
+            else:
+                row[col.replace('_', ' ').capitalize()] = int(sum(summed_values[col]))
+                row[col.replace('_', ' ').replace('Number',"Percentage").capitalize()] = sum(summed_values[col])/total_category * 100
     return row
 
 
