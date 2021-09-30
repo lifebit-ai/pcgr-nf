@@ -3,7 +3,7 @@ output:
   html_document:
     code_download: false
     toc: true                  # table of content true
-    toc_depth: 5               # upto five depths of headings (specified by #, ## and ###)
+    toc_depth: 5               # up to five depths of headings (specified by #, ## and ###)
     toc_float: true
     number_sections: true      # if you want number sections at each table header
     theme: united              # many options for theme.
@@ -39,11 +39,13 @@ library(kableExtra)
    })
 ```
 
+This is the summary report for for variant interpretation for precision cancer medicine using [Personal Cancer Genome Reporter (PCGR)](https://github.com/sigven/pcgr). Here you can see the summary information for somatic variants annotated, as well as by-gene and by-variant level information.
+
 ## Summary Plots
 
 ```{r, warning=FALSE}
 figure_number  <- "Figure 1: "
-figure_caption <- "PCGR Tiers - Number of variants"
+figure_caption <- "PCGR Tiers - Number of unique variants per tier"
 knitr::include_graphics(params$pplot_tiers, )
 htmltools::tags$figcaption( style = 'caption-side: bottom; text-align: center; font-size: 85%%; color: #71879d',
                             htmltools::em(figure_number),
