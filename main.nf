@@ -240,7 +240,7 @@ process pcgr {
     tag "$input_file"
     label 'process_high'
 
-    publishDir "${params.outdir}", mode: 'copy'
+    publishDir "${params.outdir}", pattern: "result*", mode: 'copy'
     publishDir "${params.outdir}/process-logs/${task.process}/${input_file}/", pattern: "command-logs-*", mode: 'copy'
 
     input:
@@ -310,7 +310,7 @@ process pcgr {
 process combine_tiers {
     label "process_low"
 
-    publishDir "${params.outdir}", mode: 'copy'
+    publishDir "${params.outdir}", pattern: "*.tsv", mode: 'copy'
     publishDir "${params.outdir}/process-logs/${task.process}/", pattern: "command-logs-*", mode: 'copy'
     
     input:
@@ -362,7 +362,7 @@ if (report_mode == 'report') {
         process pivot_table_gene_simple {
         label 'process_low'
 
-        publishDir "${params.outdir}", mode: 'copy'
+        publishDir "${params.outdir}", pattern: "*.tsv", mode: 'copy'
         publishDir "${params.outdir}/process-logs/${task.process}/", pattern: "command-logs-*", mode: 'copy'
 
         input:
@@ -386,7 +386,7 @@ if (report_mode == 'report') {
     process pivot_table_gene_complete {
         label 'process_low'
 
-        publishDir "${params.outdir}", mode: 'copy'
+        publishDir "${params.outdir}", pattern: "*.tsv", mode: 'copy'
         publishDir "${params.outdir}/process-logs/${task.process}/", pattern: "command-logs-*", mode: 'copy'
 
         input:
@@ -409,7 +409,7 @@ if (report_mode == 'report') {
     process pivot_table_variant {
         label 'process_low'
 
-        publishDir "${params.outdir}", mode: 'copy'
+        publishDir "${params.outdir}", pattern: "*.tsv", mode: 'copy'
         publishDir "${params.outdir}/process-logs/${task.process}/", pattern: "command-logs-*", mode: 'copy'
 
         input:
@@ -432,7 +432,7 @@ if (report_mode == 'report') {
     process plot_tiers {
         label 'process_low'
 
-        publishDir "${params.outdir}", mode: 'copy'
+        publishDir "${params.outdir}", pattern: "*.png", mode: 'copy'
         publishDir "${params.outdir}/process-logs/${task.process}/", pattern: "command-logs-*", mode: 'copy'
 
         input:
