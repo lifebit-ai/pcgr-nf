@@ -1,0 +1,23 @@
+name: splicing-pipelines-nf CI
+# This workflow is triggered on pushes and PRs to the repository.
+on: [pull_request]
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        nxf_ver: ['20.01.0', '']
+        test_type: ['test']
+    steps:
+      - uses: actions/checkout@v1
+      - name: Install Nextflow
+        run: |
+          export NXF_VER=${{ matrix.nxf_ver }}
+          wget -qO- get.nextflow.io | bash
+          sudo mv nextflow /usr/local/bin/
+      - name: Basic workflow tests
+        run: |
+          nextflow run ${GITHUB_WORKSPACE} -profile base,${{ matrix.test_type }},docker
+          echo "Results tree view:" ; tree -a results
