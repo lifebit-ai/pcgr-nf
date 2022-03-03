@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH -o pcgr.%j.out
-#SBATCH -e pcgr.%j.err
+#SBATCH -o output/pcgr.%j.out
+#SBATCH -e output/pcgr.%j.err
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=$USER@jax.org
 #SBATCH --mem=4000
