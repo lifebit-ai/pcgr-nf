@@ -20,6 +20,6 @@ curl -fsSL get.nextflow.io | bash
   -profile standard,sumner \
   -resume \
   --config conf/test.config \
-  --pcgr_data /projects/lau-lab/ataylor/Projects/pcgr-nf/pcgr_data
+  --pcgr_data /projects/lau-lab/ataylor/Projects/pcgr-nf/pcgr_data \
   --max_cpus 4 \
   --max_memory 8.GB
