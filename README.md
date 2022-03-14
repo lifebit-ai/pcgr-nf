@@ -67,7 +67,7 @@ which is equivalent to
 
 To see how to run the pipeline on [CloudOS](https://cloudos.lifebit.ai/) see [docs/usage_cloudos.md](docs/usage_cloudos.md) guide.
 
-## Run pipeline on CloudOS
+## Run pipeline on Sumner
 
 To see how to run the pipeline on JAX's Sumner HPC, see [docs/usage_sumner.md](docs/usage_sumner.md) guide.
 
