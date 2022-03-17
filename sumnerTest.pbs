@@ -1,0 +1,25 @@
+#!/bin/bash
+#SBATCH -o output/pcgr.%j.out
+#SBATCH -e output/pcgr.%j.err
+#SBATCH --mail-type=END,FAIL
+#SBATCH --mail-user=$USER@jax.org
+#SBATCH --mem=8000
+#SBATCH --cpus-per-task=4
+#SBATCH -p compute
+#SBATCH -q batch
+#SBATCH -t 08:00:00
+
+cd $SLURM_SUBMIT_DIR
+date;hostname;pwd
+
+module load singularity
+
+curl -fsSL get.nextflow.io | bash
+
+./nextflow run main.nf \
+  -profile standard,sumner \
+  -resume \
+  --config conf/test.config \
+  --pcgr_data /projects/lau-lab/ataylor/Projects/pcgr-nf/pcgr_data \
+  --max_cpus 4 \
+  --max_memory 8.GB
